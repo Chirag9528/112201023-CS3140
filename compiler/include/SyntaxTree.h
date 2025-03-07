@@ -6,29 +6,39 @@
 #include <string.h>
 #include <math.h>
 #include "Queue.h"
+#include "Symboltable.h"
+
+typedef union __valunion{
+    int num;
+    bool bnum;
+    char* str;
+}valunion;
 
 typedef struct __tree{
     char* name;
-    int value;
-    struct __tree* left;
-    struct __tree* right;
+    int idx;
+    char* var_idx;
+    char* type;
+    variable_type vartype;
+    valunion value;
+    int valid_flag;
+    struct __tree* child;
+    struct __tree* sibling;
+    int indentation;
 } tree;
 
+tree* createnode(char* s , int flag , int idx , valunion* value , variable_type vartype, char* type , tree* child , tree* sibling);
 
-void preorder(tree* root);
+void evaluate_global_declaration(tree* root);
 
-void inorder(tree* root);
+void evaluate_global_declaration_list(tree* root);
 
-int depth(tree* root);
+void evaluate_expression(tree* expr);
 
-tree* createnode(char* s , int value , tree* left , tree* right);
+void evaluate_statements(tree* root);
 
-void print_tree(tree* root);
+void evaluate_tree(tree* root);
 
-void print_info(tree* root);
-
-void print_decl(tree* root);
-
-void print_decl_info(tree* root);
+void print(tree* root , int tabspace);
 
 #endif

@@ -36,10 +36,10 @@ return 			{
 
 				}
 begin			{
-
+					return BEG;
 				}	
 end				{
-
+					return END;
 				}	
 read			{
 					return READ;
@@ -51,28 +51,31 @@ integer			{
 					return T_INT;
 				}	
 boolean			{
-	
+					return T_BOOL;
 				}	
-begindecl		{
+string			{
+					return T_STRING;
+				}
+(begindecl)|(decl)		{
 					return DECL;
 				}
 enddecl			{
 					return ENDDECL;
 				}
 if				{
-				
+					return IF;
 				}
 then			{
-				
+					return THEN;
 				}	
 else			{
-				
+					return ELSE;
 				}	
 endif			{
-				
+					return ENDIF;
 				}
 do				{
-				
+					
 				}
 while			{
 				
@@ -81,34 +84,37 @@ endwhile		{
 				
 				}
 for 			{
-				
+					return FOR;
+				}
+break			{
+					return BREAK;
 				}		
 "=="			{
-				
+					return EQUALEQUAL;
 				}	
 "<="			{
-				
+					return LESSTHANOREQUAL;
 				}
 ">="			{
-				
+					return GREATERTHANOREQUAL;
 				}
 "!="			{
-			
+					return NOTEQUAL;
 				}	
 AND				{
-				
+					return LOGICAL_AND;
 				}	
 OR				{
-				
+					return LOGICAL_OR;
 				}
 NOT				{
-				
+					return LOGICAL_NOT;
 				}
 true			{
-				
+					return T;
 				}	
 false			{
-				
+					return F;
 				}
 
 {digit}+		{ 	
@@ -132,7 +138,7 @@ false			{
                             
 				}
 
-[ \t]			;
+[ \t\n]			;
 
 .				{
 				

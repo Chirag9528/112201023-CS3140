@@ -10,7 +10,7 @@ CFLAGS = -Iinclude
 OBJS = $(SRC_DIR)/Symboltable.o ${SRC_DIR}/SyntaxTree.o ${SRC_DIR}/Queue.o
 
 Compiler: $(SRC_DIR) $(BIN_DIR) $(OBJS) lex yacc
-	@$(CC) $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(OBJS) -o $(BIN_DIR)/Compiler
+	@$(CC) -g $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(OBJS) -o $(BIN_DIR)/Compiler
 
 #lex and yacc
 lex: $(SRC_DIR)/compiler.l yacc
@@ -18,7 +18,7 @@ lex: $(SRC_DIR)/compiler.l yacc
 	@mv lex.yy.c $(SRC_DIR)/	
 
 yacc: $(SRC_DIR)/compiler.y
-	@$(YACC) -d $(SRC_DIR)/compiler.y
+	@$(YACC) -Wcounterexamples -d $(SRC_DIR)/compiler.y
 	@mv y.tab.c y.tab.h $(SRC_DIR)/
 
 # Object file compilation

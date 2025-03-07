@@ -1,179 +1,506 @@
-#include "SyntaxTree.h"
+#include "./../include/SyntaxTree.h"
+int breakflag = 0;
 
-void inorder(tree* root){
-    if (root == NULL) return;
-    inorder(root->left);
-    if (root->name){
-        printf("%s  ",root->name);
-    }
-    else{
-        printf("%d  ",root->value);
-    }
-    inorder(root->right);
-    return;
-}
-
-void preorder(tree* root){
-    if (root == NULL) return;
-    if (root->name){
-        printf("%s  ",root->name);
-    }
-    else{
-        printf("%d  ",root->value);
-    }
-    preorder(root->left);
-    preorder(root->right);
-    return;
-}
-
-
-int depth(tree* root){
-    if (root == NULL) return 0;
-    else if (!root->left && !root->right) return 0;
-    int left = depth(root->left);
-    int right = depth(root->right);
-    if (left >= right) return 1 + left;
-    return 1 + right;
-}
-
-tree* createnode(char* s , int value , tree* left , tree* right){
+tree* createnode(char* s , int flag , int idx , valunion* value , variable_type vartype , char* type , tree* child , tree* sibling){
     tree* newnode = (tree*)malloc(sizeof(tree));
     if (newnode == NULL) return newnode;
     if (s){
         newnode->name = strdup(s);
     }
-    if (left){
-        newnode->left = (tree*)malloc(sizeof(tree));
-        if (newnode->left == NULL) return NULL;
-        newnode->left = left;
+    if (child){
+        newnode->child = (tree*)malloc(sizeof(tree));
+        if (newnode->child == NULL) return NULL;
+        newnode->child = child;
     }
-    if (right){
-        newnode->right = (tree*)malloc(sizeof(tree));
-        if (newnode->right == NULL) return NULL;
-        newnode->right = right;
+    if (sibling){
+        newnode->sibling = (tree*)malloc(sizeof(tree));
+        if (newnode->sibling == NULL) return NULL;
+        newnode->sibling = sibling;
     }
-    newnode->value = value;
+    newnode->valid_flag = flag;
+    newnode->vartype = vartype;
+    newnode->idx = idx;
+    if (type){
+        newnode->type = strdup(type);
+    }
+    if (value){
+        if (vartype == INTEGER){
+            newnode->value.num = value->num;
+        }
+        else if (vartype == BOOLEAN){
+            newnode->value.bnum = value->bnum;
+        }
+        else if (vartype == STRING){
+            newnode->value.str = strdup(value->str);
+        }
+    }
     return newnode;
 }
 
-
-void print_tree(tree* root){
-    char* space = "      ";
-    int height = depth(root);
-    int maxheight = height;
-    int maxnodes = 1<<height;
-    queue* qu = init_queue();
-    push(qu , root , 0);
-    int leftmostcal = 0;
-    while (qu->size > 0){
-        int n = qu->size;
-        int initialspace = 1<<height;
-        while (initialspace > 1){
-            printf("%s",space);
-            initialspace--;
-        }
-        int diff = maxheight - height;
-        int prevtrack = -leftmostcal;
-        int total = n;
-        while (n--){
-            queuenode* node = pop(qu);
-
-            // for printing
-            int gap = ((node->number - prevtrack)/(1<<(height+1)))-1;
-            while (gap > 0){
-                int gaptime = (1<<height)*2;
-                while (gaptime > 0){
-                    printf("%s",space);
-                    gaptime--;
+void evaluate_global_declaration(tree* root){
+    if (!root) return;
+    tree* decl_type = root->child;
+    tree* vars = decl_type->sibling;
+    switch (decl_type->vartype){
+        case INTEGER:
+            while (vars){
+                if (strcmp(vars->type , "array") == 0){
+                    insert_string(vars->name , INTEGER , "array" , vars->idx);
                 }
-                gap--;
-            }
-            
-            prevtrack = node->number;
-
-            if (total == n+1 && node->number != (-leftmostcal)){
-                int firstnodenotpresent = (1<<height)*2;
-                while (firstnodenotpresent > 1){
-                    printf("%s",space);
-                    firstnodenotpresent--;
+                else{
+                    insert_string(vars->name , INTEGER , "int" , 1);
                 }
+                vars = vars->sibling;
             }
+            break;
+        case BOOLEAN:
+            while (vars){
+                if (strcmp(vars->type , "array") == 0){
+                    insert_string(vars->name , BOOLEAN , "array" , vars->idx);
+                }
+                else{
+                    insert_string(vars->name , BOOLEAN , "bool" , 1);
+                }
+                vars = vars->sibling;
+            }
+            break;
+        case STRING:
+            while (vars){
+                if (strcmp(vars->type , "array") == 0){
+                    insert_string(vars->name , STRING , "array" , vars->idx);
+                }
+                else{
+                    insert_string(vars->name , STRING , "char*" , 1);
+                }
+                vars = vars->sibling;
+            }
+            break;
+        default:
+            break;
+    }
+    
+}
 
-            int temp = (1<<height)*2;
-            if (node->treenode->name){
-                printf("%s",node->treenode->name);
+void evaluate_global_declaration_list(tree* root){
+    if (!root) return;
+    tree* child = root->child;
+    while (child){
+        evaluate_global_declaration(child);
+        child = child->sibling;
+    }
+}
+
+void evaluate_expression(tree* expr){
+    if (expr->name){
+        if (strcmp(expr->name , "LOGICAL_OR") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num || expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num || expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum || expr->child->sibling->value.num;
             }
             else{
-                printf("%d",node->treenode->value);
-            }
-            while (temp > 1){
-                printf("%s",space);
-                temp--;
-            }
-            // ends
-
-            if (node->treenode->left){
-                push(qu , node->treenode->left, node->number-(1<<(height-1)));
-            }
-            if (node->treenode->right){
-                push(qu , node->treenode->right , node->number+(1<<(height-1)));
+                expr->value.bnum = expr->child->value.bnum || expr->child->sibling->value.bnum;
             }
         }
-        printf("\n\n");
-        height--;
-        leftmostcal+= (1<<height);
-    }
-    printf("\n\n");
-}
+        else if (strcmp(expr->name , "LOGICAL_AND") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num && expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num && expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum && expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.bnum = expr->child->value.bnum && expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "LOGICAL_NOT") == 0){
+            evaluate_expression(expr->child);   
+            if (expr->vartype == INTEGER){
+                expr->value.bnum = !expr->child->value.num;
+            }
+            else{
+                expr->value.bnum = !expr->child->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "EQUALEQUAL") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num == expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num == expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum == expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.bnum = expr->child->value.bnum == expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "NOTEQUAL") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num != expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num != expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum != expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.bnum = expr->child->value.bnum != expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "LESSTHANOREQUAL") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num <= expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num <= expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum <= expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.bnum = expr->child->value.bnum <= expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "GREATERTHANOREQUAL") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num >= expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num >= expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum >= expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.bnum = expr->child->value.bnum >= expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "GREATERTHAN") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num > expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num > expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum > expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.bnum = expr->child->value.bnum > expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "LESSTHAN") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling); 
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.num < expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.bnum = expr->child->value.num < expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.bnum = expr->child->value.bnum < expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.bnum = expr->child->value.bnum < expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "MODULO") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.num % expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.num = expr->child->value.num % expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.bnum % expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.num = expr->child->value.bnum % expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "DIVIDE") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling); 
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.num / expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.num = expr->child->value.num / expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.bnum / expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.num = expr->child->value.bnum / expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "MULT") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.num * expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.num = expr->child->value.num * expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.bnum * expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.num = expr->child->value.bnum * expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "MINUS") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.num - expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.num = expr->child->value.num - expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.bnum - expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.num = expr->child->value.bnum - expr->child->sibling->value.bnum;
+            }
+        }
+        else if (strcmp(expr->name , "PLUS") == 0){
+            evaluate_expression(expr->child);
+            evaluate_expression(expr->child->sibling);
+            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.num + expr->child->sibling->value.num;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
+                expr->value.num = expr->child->value.num + expr->child->sibling->value.bnum;
+            }
+            else if (expr->child->vartype == BOOLEAN && expr->child->sibling->vartype == INTEGER){
+                expr->value.num = expr->child->value.bnum + expr->child->sibling->value.num;
+            }
+            else{
+                expr->value.num = expr->child->value.bnum + expr->child->sibling->value.bnum;
+            }
+        }
+        else {
+            node* varnode = search_string(expr->name);
+            expr->type = strdup(varnode->type);
+            expr->vartype = varnode->vartype;
 
-void print_info(tree* root){
-    printf("Preorder Traversal: \n");
-    printf("--------------------\n");
-    preorder(root);
-    printf("\n\n");
-    printf("Inorder Traversal: \n");
-    printf("--------------------\n");
-    inorder(root);
-    printf("\n\n");
-    printf("Abstract Syntax Tree: \n");
-    printf("----------------------\n");
-    printf("\n");
-    print_tree(root);
-    printf("===========================================================================\n\n");
-}
-
-
-void print_decl(tree* root){
-    char* space = "        ";
-    printf("%s%s",space , space);
-    printf("%s\n",root->name);
-    printf("\n");
-    printf("%s",root->left->name);
-    printf("%s%s%s%s",space,space,space,space);
-    queue* qu = init_queue();
-    push(qu , root->right , 0);
-    while (qu->size > 0){
-        tree* node = pop(qu)->treenode;
-        printf("%s%s",node->name,space);
-        if (node->right){
-            push(qu , node->right , 0);
+            if (strcmp(expr->type , "array") == 0){
+                if (expr->var_idx){
+                    node* var_value = search_string(expr->var_idx);
+                    expr->idx = *((int*)var_value->val->value);
+                }
+                if (varnode->vartype == INTEGER){
+                    int numvalue = ((int*)varnode->val->value)[expr->idx];
+                    expr->value.num = numvalue;
+                }
+                else if (varnode->vartype == BOOLEAN){
+                    bool boolvalue = ((bool*)varnode->val->value)[expr->idx];
+                    expr->value.bnum = boolvalue;
+                }
+                else if (varnode->vartype == STRING){
+                    char* strvalue = ((char**)varnode->val->value)[expr->idx];
+                    expr->value.str = strdup(strvalue);
+                }
+            }
+            else{
+                if (varnode->vartype == INTEGER){
+                    int numvalue = *((int*)varnode->val->value);
+                    expr->value.num = numvalue;
+                }
+                else if (varnode->vartype == BOOLEAN){
+                    bool boolvalue = *((bool*)varnode->val->value);
+                    expr->value.bnum = boolvalue;
+                }
+                else if (varnode->vartype == STRING){
+                    char* strvalue = *((char**)varnode->val->value);
+                    expr->value.str = strdup(strvalue);
+                }
+            }
         }
     }
-    printf("\n\n\n");
 }
 
-void print_decl_info(tree* root){
-    printf("Preorder Traversal: \n");
-    printf("--------------------\n");
-    preorder(root);
-    printf("\n\n");
-    printf("Inorder Traversal: \n");
-    printf("--------------------\n");
-    inorder(root);
-    printf("\n\n");
-    printf("Abstract Syntax Tree: \n");
-    printf("----------------------\n");
-    printf("\n");
-    print_decl(root);
-    printf("===========================================================================\n\n");
+void evaluate_statements(tree* root){
+    tree* childs = root->child;
+    while (childs){
+        if (strcmp(childs->name , "COND_STMT") == 0){
+            if (breakflag) break;
+            if (strcmp(childs->child->name , "IF_STMT") == 0){
+                tree* if_node = childs->child;
+                tree* if_cond = if_node->child;
+                evaluate_expression(if_cond->child);
+                if (if_cond->child->value.bnum){
+                    tree* if_body = if_cond->sibling;
+                    evaluate_statements(if_body);
+                }
+                else if (if_node->sibling){
+                    tree* else_body = if_node->sibling->child;
+                    evaluate_statements(else_body);
+                }
+            }
+            else if (strcmp(childs->child->name , "FOR_STMT") == 0){
+                tree* for_init = childs->child->child;
+                tree* for_cond = for_init->sibling;
+                tree* for_expr = for_cond->sibling;
+                tree* for_body = for_expr->sibling;
+                evaluate_statements(for_init);
+                evaluate_expression(for_cond->child);
+                while (for_cond->child->value.bnum){
+                    evaluate_statements(for_body);
+                    if (breakflag) break;
+                    evaluate_statements(for_expr);
+                    evaluate_expression(for_cond->child);
+                }
+                breakflag = 0;
+            }
+        }
+        else if (strcmp(childs->name , "ASSIGN_STMT") == 0){
+            if (breakflag) break;
+            valunion value;
+            tree* dollarone = childs->child;
+            tree* dollarthree = childs->child->sibling;
+            evaluate_expression(dollarthree);
+
+            node* varnode = search_string(dollarone->name);
+            dollarone->type = strdup(varnode->type);
+            dollarone->vartype = varnode->vartype;
+
+            if (strcmp(dollarone->type , "array")==0){
+                if (dollarone->var_idx){
+                    node* var_value = search_string(dollarone->var_idx);
+                    dollarone->idx = *((int*)var_value->val->value);
+                }
+                if (dollarone->vartype == INTEGER){
+                    int val = dollarthree->value.num;
+                    update_string(dollarone->name , (void*)&val , dollarone->idx);
+                    value.num = val;
+                }
+                else if (dollarone->vartype == BOOLEAN){
+                    bool val = dollarthree->value.bnum;
+                    update_string(dollarone->name , (void*)&val , dollarone->idx);
+                    value.bnum = val;
+                }
+                else if (dollarone->vartype == STRING){
+                    char* val = dollarthree->value.str;
+                    update_string(dollarone->name , (void*)&val , dollarone->idx);
+                    value.str = strdup(val);
+                }
+            }
+            else{
+                if (dollarone->vartype == INTEGER){
+                    int val = dollarthree->value.num;
+                    update_string(dollarone->name , (void*)&val , 0);
+                    value.num = val;
+                }
+                else if (dollarone->vartype == BOOLEAN){
+                    bool val = dollarthree->value.bnum;
+                    update_string(dollarone->name , (void*)&val , 0);
+                    value.bnum = val;
+                }
+                else if (dollarone->vartype == STRING){
+                    char* val = dollarthree->value.str;
+                    update_string(dollarone->name , (void*)&val , 0);
+                    value.str = strdup(val);
+                }
+            }
+            childs->value = value;
+        }
+        else if (strcmp(childs->name , "break") == 0){
+            breakflag = 1;
+            break;
+        }
+        childs = childs->sibling;
+    }
+}
+
+void evaluate_tree(tree* root){
+    if (!root) return;
+    if (strcmp(root->name , "PROG") == 0){
+        tree* child = root->child;
+        while (child){
+            if (child && child->name){
+                if (strcmp(child->name , "GDECL_LIST") == 0){
+                    evaluate_global_declaration_list(child);
+                }
+                else if (strcmp(child->name , "STMT_LIST") == 0){
+                    evaluate_statements(child);
+                }
+            }
+            child = child->sibling;
+        }
+    }
+    return;
+}
+
+void print(tree* root , int tabspace){
+    if (root == NULL) return;
+    int space = tabspace;
+    while (space){
+        printf("\t|");
+        space--;
+    }
+    printf("--> ");
+    if (root->name){
+        if (root->valid_flag && root->type && strcmp(root->type,"array") == 0){
+            if (root->var_idx){
+                printf("%s[%s]\n",root->name , root->var_idx);
+            }
+            else{
+                printf("%s[%d]\n",root->name , root->idx);
+            }
+        }
+        else{
+            printf("%s\n",root->name);
+        }
+    }
+    else{
+        if (root->vartype == INTEGER){
+            printf("%d\n",root->value.num);
+        }
+        else if (root->vartype == BOOLEAN){
+            printf("%d\n",root->value.bnum);
+        }
+        else if (root->vartype == STRING){
+            printf("%s\n" , root->value.str);
+        }
+    }
+    if (root->child){
+        print(root->child , tabspace + 1);
+        tree* childs = root->child->sibling;
+        while (childs){
+            print(childs , tabspace + 1);
+            childs = childs->sibling;
+        }
+    }
+
 }

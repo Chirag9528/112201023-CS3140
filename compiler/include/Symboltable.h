@@ -3,11 +3,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
+typedef enum{
+	INTEGER,
+	BOOLEAN,
+	STRING
+} variable_type;
+
+typedef struct _value_struct{
+    int size;
+    void* value;
+} value_struct;
 
 typedef struct _node{
     char* name;
-    int value;
+    char* type;
     int flag;
+    variable_type vartype;
+    value_struct* val;
     struct _node* next;
 } node;
 
@@ -21,11 +35,14 @@ void init();
 
 int rolling_hashfunction(char* s);
 
-int insert_string(char* s , int value , int flag);
+int insert_string(char* s , variable_type vartype , char* type , int size);
 
-int update_string(char* s , int value);
+int update_string(char* s , void* value , int idx);
 
-int search_string(char* s);
+node* search_string(char* s);
+
+void update_type_size(char* s , char* type , int size);
+
 
 void print_hash_table();
 

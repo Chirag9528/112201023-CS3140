@@ -162,8 +162,15 @@ variable_type vartype;
 						}
 					}
 		|	Gid '[' NUM ']'	{	
-								$1->type = strdup("array");
-								$1->idx = $3;
+								if (strcmp($1->type , "array") == 0){
+									tree* dim2array = createnode($1->name , 1 , $1->idx , NULL , $1->vartype , "2darray" , NULL , NULL);
+									dim2array->idx2 = $3;
+									$$ = dim2array;
+								}
+								else{
+									tree* array = createnode($1->name , 1 , $3 , NULL , $1->vartype , "array" , NULL , NULL);
+									$$ = array;
+								}
 							}
 
 		;
@@ -382,6 +389,12 @@ variable_type vartype;
 									if ($1->var_idx){
 										var_expr->var_idx = strdup($1->var_idx);
 									}
+									if ($1->var_idx2){
+										var_expr->var_idx2 = strdup($1->var_idx2);
+									}
+									else{
+										var_expr->idx2 = $1->idx2;
+									}
 									$$ = var_expr;
 								}
 		|	T					{ }
@@ -505,13 +518,25 @@ variable_type vartype;
 						$$ = createnode($1, 1 , 0 , NULL , 0 , NULL , NULL , NULL);
 					}
 		|	var_expr '[' expr ']'	{	
-										if ($3->name){
-											tree* temp = createnode($1->name , 1 , 0 , NULL , 0 , "array" , NULL , NULL);
-											temp->var_idx = strdup($3->name);
-											$$ = temp;
+										if ($1->type){
+											if ($3->name){
+												$1->var_idx2 = strdup($3->name);
+											}
+											else{
+												$1->idx2 = $3->value.num;
+											}
+											$1->type = strdup("2darray");
+											$$ = $1;
 										}
 										else{
-											$$ =  createnode($1->name , 1 , $3->value.num , NULL , 0 , "array" , NULL , NULL);
+											if ($3->name){
+												tree* temp = createnode($1->name , 1 , 0 , NULL , 0 , "array" , NULL , NULL);
+												temp->var_idx = strdup($3->name);
+												$$ = temp;
+											}
+											else{
+												$$ =  createnode($1->name , 1 , $3->value.num , NULL , 0 , "array" , NULL , NULL);
+											}
 										}
 									}
 

@@ -18,7 +18,9 @@ typedef union __valunion{
 typedef struct __tree{
     char* name;
     int idx;
+    int idx2;
     char* var_idx;
+    char* var_idx2;
     char* type;
     variable_type vartype;
     valunion value;

@@ -185,9 +185,10 @@ void print_hash_table(){
             for (int j=0 ; j<6 ; j++) printf(" ");
             printf("|   ");
             if (temp->vartype == INTEGER){
-                if (strcmp(temp->type , "array") == 0){
+                if (strcmp(temp->type , "array") == 0 || strcmp(temp->type , "2darray") == 0){
                     int len = 0;
                     int arraysize = temp->val->size;
+                    if (strcmp(temp->type , "2darray") == 0) arraysize*= temp->val->size2;
                     for (int idx = 0; idx < arraysize ; idx++){
                         int number = ((int*)temp->val->value)[idx];
                         if (idx == arraysize - 1){
@@ -210,9 +211,10 @@ void print_hash_table(){
 
             }
             else if (temp->vartype == BOOLEAN){
-                if (strcmp(temp->type , "array") == 0){
+                if (strcmp(temp->type , "array") == 0 || strcmp(temp->type , "2darray") == 0){
                     int len = 0;
                     int arraysize = temp->val->size;
+                    if (strcmp(temp->type , "2darray") == 0) arraysize*= temp->val->size2;
                     for (int idx = 0; idx<arraysize ; idx++){
                         bool number = ((bool*)temp->val->value)[idx];
                         if (idx == arraysize - 1){
@@ -234,9 +236,10 @@ void print_hash_table(){
                 }
             }
             else if (temp->vartype == STRING){
-                if (strcmp(temp->type , "array") == 0){
+                if (strcmp(temp->type , "array") == 0 || strcmp(temp->type , "2darray") == 0){
                     int len = 0;
                     int arraysize = temp->val->size;
+                    if (strcmp(temp->type , "2darray") == 0) arraysize*= temp->val->size2;
                     for (int idx = 0; idx<arraysize ; idx++){
                         char* number = ((char**)temp->val->value)[idx];
                         if (idx == arraysize - 1){
@@ -269,9 +272,10 @@ void print_hash_table(){
                 }
             }
             else if (temp->vartype == FLOAT){
-                if (strcmp(temp->type , "array") == 0){
+                if (strcmp(temp->type , "array") == 0 || strcmp(temp->type,"2darray") == 0){
                     int len = 0;
                     int arraysize = temp->val->size;
+                    if (strcmp(temp->type , "2darray") == 0) arraysize*= temp->val->size2;
                     for (int idx = 0; idx < arraysize ; idx++){
                         float number = ((float*)temp->val->value)[idx];
                         if (idx == arraysize - 1){

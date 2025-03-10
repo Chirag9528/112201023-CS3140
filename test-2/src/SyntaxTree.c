@@ -50,6 +50,16 @@ void evaluate_global_declaration(tree* root){
                 if (strcmp(vars->type , "array") == 0){
                     insert_string(vars->name , INTEGER , "array" , vars->idx);
                 }
+                else if (strcmp(vars->type , "2darray") == 0){
+                    insert_string(vars->name , INTEGER , "2darray" , vars->idx);
+                    node* d2var = search_string(vars->name);
+                    d2var->val->size2 = vars->idx2;
+                    int allocsize = d2var->val->size*d2var->val->size2;
+                    void* temp = realloc(d2var->val->value , sizeof(int)*allocsize);
+                    if (temp){
+                        d2var->val->value = temp;
+                    }
+                }
                 else{
                     insert_string(vars->name , INTEGER , "int" , 1);
                 }
@@ -60,6 +70,16 @@ void evaluate_global_declaration(tree* root){
             while (vars){
                 if (strcmp(vars->type , "array") == 0){
                     insert_string(vars->name , BOOLEAN , "array" , vars->idx);
+                }
+                else if (strcmp(vars->type , "2darray") == 0){
+                    insert_string(vars->name , BOOLEAN , "2darray" , vars->idx);
+                    node* d2var = search_string(vars->name);
+                    d2var->val->size2 = vars->idx2;
+                    int allocsize = d2var->val->size*d2var->val->size2;
+                    void* temp = realloc(d2var->val->value , sizeof(bool)*allocsize);
+                    if (temp){
+                        d2var->val->value = temp;
+                    }
                 }
                 else{
                     insert_string(vars->name , BOOLEAN , "bool" , 1);
@@ -72,6 +92,16 @@ void evaluate_global_declaration(tree* root){
                 if (strcmp(vars->type , "array") == 0){
                     insert_string(vars->name , STRING , "array" , vars->idx);
                 }
+                else if (strcmp(vars->type , "2darray") == 0){
+                    insert_string(vars->name , STRING , "2darray" , vars->idx);
+                    node* d2var = search_string(vars->name);
+                    d2var->val->size2 = vars->idx2;
+                    int allocsize = d2var->val->size*d2var->val->size2;
+                    void* temp = realloc(d2var->val->value , sizeof(char*)*allocsize);
+                    if (temp){
+                        d2var->val->value = temp;
+                    }
+                }
                 else{
                     insert_string(vars->name , STRING , "char*" , 1);
                 }
@@ -82,6 +112,16 @@ void evaluate_global_declaration(tree* root){
         while (vars){
             if (strcmp(vars->type,"array") == 0){
                 insert_string(vars->name , FLOAT , "array" , vars->idx);
+            }
+            else if (strcmp(vars->type , "2darray") == 0){
+                insert_string(vars->name , FLOAT , "2darray" , vars->idx);
+                node* d2var = search_string(vars->name);
+                d2var->val->size2 = vars->idx2;
+                int allocsize = d2var->val->size*d2var->val->size2;
+                void* temp = realloc(d2var->val->value , sizeof(float)*allocsize);
+                if (temp){
+                    d2var->val->value = temp;
+                }
             }
             else{
                 insert_string(vars->name , FLOAT , "float" , 1);
@@ -423,6 +463,38 @@ void evaluate_expression(tree* expr){
                     expr->value.fnum = floatvalue;
                 }
             }
+            else if (strcmp(expr->type,"2darray") == 0){
+                if (expr->var_idx){
+                    node* var_value = search_string(expr->var_idx);
+                    expr->idx = *((int*)var_value->val->value);
+                }
+                if (expr->var_idx2){
+                    node* var_value2 = search_string(expr->var_idx2);
+                    expr->idx2 = *((int*)var_value2->val->value);
+                }
+                if (expr->vartype == INTEGER){
+                    int idxcal = (varnode->val->size2*expr->idx)+(expr->idx2);
+                    int numvalue = ((int*)varnode->val->value)[idxcal];
+                    expr->value.num = numvalue;
+                }
+                else if (expr->vartype == BOOLEAN){
+                    int idxcal = (varnode->val->size2*expr->idx)+(expr->idx2);
+                    bool boolvalue = ((bool*)varnode->val->value)[idxcal];
+                    expr->value.bnum = boolvalue;
+                    
+                }
+                else if (expr->vartype == STRING){
+                    int idxcal = (varnode->val->size2*expr->idx)+(expr->idx2);
+                    char* strvalue = ((char**)varnode->val->value)[idxcal];
+                    expr->value.str = strdup(strvalue);
+                    
+                }
+                else if (expr->vartype == FLOAT){
+                    int idxcal = (varnode->val->size2*expr->idx)+(expr->idx2);
+                    float floatvalue = ((float*)varnode->val->value)[idxcal];
+                    expr->value.fnum = floatvalue;
+                }
+            }
             else{
                 if (varnode->vartype == INTEGER){
                     int numvalue = *((int*)varnode->val->value);
@@ -525,6 +597,40 @@ void evaluate_statements(tree* root){
                     value.fnum = val;
                 }
             }
+            else if (strcmp(dollarone->type , "2darray") == 0){
+                if (dollarone->var_idx){
+                    node* var_value = search_string(dollarone->var_idx);
+                    dollarone->idx = *((int*)var_value->val->value);
+                }
+                if (dollarone->var_idx2){
+                    node* var_value2 = search_string(dollarone->var_idx2);
+                    dollarone->idx2 = *((int*)var_value2->val->value);
+                }
+                if (dollarone->vartype == INTEGER){
+                    int val = dollarthree->value.num;
+                    int idxcal = (varnode->val->size2*dollarone->idx)+(dollarone->idx2);
+                    update_string(dollarone->name , (void*)&val , idxcal);
+                    value.num = val;
+                }
+                else if (dollarone->vartype == BOOLEAN){
+                    bool val = dollarthree->value.bnum;
+                    int idxcal = (varnode->val->size2*dollarone->idx)+(dollarone->idx2);
+                    update_string(dollarone->name , (void*)&val , idxcal);
+                    value.bnum = val;
+                }
+                else if (dollarone->vartype == STRING){
+                    char* val = dollarthree->value.str;
+                    int idxcal = (varnode->val->size2*dollarone->idx)+(dollarone->idx2);
+                    update_string(dollarone->name , (void*)&val , idxcal);
+                    value.str = strdup(val);
+                }
+                else if (dollarone->vartype == FLOAT){
+                    float val = dollarthree->value.fnum;
+                    int idxcal = (varnode->val->size2*dollarone->idx)+(dollarone->idx2);
+                    update_string(dollarone->name , (void*)&val , idxcal);
+                    value.fnum = val;
+                }
+            }
             else{
                 if (dollarone->vartype == INTEGER){
                     int val = dollarthree->value.num;
@@ -591,6 +697,20 @@ void print(tree* root , int tabspace){
             }
             else{
                 printf("%s[%d]\n",root->name , root->idx);
+            }
+        }
+        else if (root->valid_flag && root->type && strcmp(root->type , "2darray") == 0){
+            if (root->var_idx && root->var_idx2){
+                printf("%s[%s][%s]\n",root->name , root->var_idx , root->var_idx2);
+            }
+            else if (root->var_idx){
+                printf("%s[%s][%d]\n",root->name , root->var_idx , root->idx2 );
+            }
+            else if (root->var_idx2){
+                printf("%s[%d][%s]\n",root->name , root->idx , root->var_idx2);
+            }
+            else{
+                printf("%s[%d][%d]\n" , root->name , root->idx , root->idx2);
             }
         }
         else{

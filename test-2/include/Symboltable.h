@@ -14,6 +14,7 @@ typedef enum{
 
 typedef struct _value_struct{
     int size;
+    int size2;
     void* value;
 } value_struct;
 

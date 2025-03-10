@@ -262,7 +262,26 @@ void evaluate_expression(tree* expr){
         else if (strcmp(expr->name , "DIVIDE") == 0){
             evaluate_expression(expr->child);
             evaluate_expression(expr->child->sibling); 
-            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+            if (expr->child->vartype == FLOAT || expr->child->sibling->vartype == FLOAT){
+                float left , right;
+                switch (expr->child->vartype){
+                    case FLOAT:   left = expr->child->value.fnum; break;
+                    case INTEGER: left = expr->child->value.num; break;
+                    case BOOLEAN: left = expr->child->value.bnum; break;
+                    default : break;
+                }
+                switch (expr->child->sibling->vartype){
+                    case FLOAT:   right = expr->child->sibling->value.fnum; break;
+                    case INTEGER: right = expr->child->sibling->value.num; break;
+                    case BOOLEAN: right = expr->child->sibling->value.bnum; break;
+                    default : break;
+                }
+                expr->value.fnum = left / right;
+                expr->type = strdup("float");
+                expr->vartype = FLOAT;
+
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
                 expr->value.num = expr->child->value.num / expr->child->sibling->value.num;
             }
             else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
@@ -278,7 +297,25 @@ void evaluate_expression(tree* expr){
         else if (strcmp(expr->name , "MULT") == 0){
             evaluate_expression(expr->child);
             evaluate_expression(expr->child->sibling);
-            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+            if (expr->child->vartype == FLOAT || expr->child->sibling->vartype == FLOAT){
+                float left , right;
+                switch (expr->child->vartype){
+                    case FLOAT:   left = expr->child->value.fnum; break;
+                    case INTEGER: left = expr->child->value.num; break;
+                    case BOOLEAN: left = expr->child->value.bnum; break;
+                    default : break;
+                }
+                switch (expr->child->sibling->vartype){
+                    case FLOAT:   right = expr->child->sibling->value.fnum; break;
+                    case INTEGER: right = expr->child->sibling->value.num; break;
+                    case BOOLEAN: right = expr->child->sibling->value.bnum; break;
+                    default : break;
+                }
+                expr->value.fnum = left * right;
+                expr->type = strdup("float");
+                expr->vartype = FLOAT;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
                 expr->value.num = expr->child->value.num * expr->child->sibling->value.num;
             }
             else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
@@ -294,7 +331,25 @@ void evaluate_expression(tree* expr){
         else if (strcmp(expr->name , "MINUS") == 0){
             evaluate_expression(expr->child);
             evaluate_expression(expr->child->sibling);
-            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+            if (expr->child->vartype == FLOAT || expr->child->sibling->vartype == FLOAT){
+                float left , right;
+                switch (expr->child->vartype){
+                    case FLOAT:   left = expr->child->value.fnum; break;
+                    case INTEGER: left = expr->child->value.num; break;
+                    case BOOLEAN: left = expr->child->value.bnum; break;
+                    default : break;
+                }
+                switch (expr->child->sibling->vartype){
+                    case FLOAT:   right = expr->child->sibling->value.fnum; break;
+                    case INTEGER: right = expr->child->sibling->value.num; break;
+                    case BOOLEAN: right = expr->child->sibling->value.bnum; break;
+                    default : break;
+                }
+                expr->value.fnum = left - right;
+                expr->type = strdup("float");
+                expr->vartype = FLOAT;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
                 expr->value.num = expr->child->value.num - expr->child->sibling->value.num;
             }
             else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
@@ -310,7 +365,25 @@ void evaluate_expression(tree* expr){
         else if (strcmp(expr->name , "PLUS") == 0){
             evaluate_expression(expr->child);
             evaluate_expression(expr->child->sibling);
-            if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
+            if (expr->child->vartype == FLOAT || expr->child->sibling->vartype == FLOAT){
+                float left , right;
+                switch (expr->child->vartype){
+                    case FLOAT:   left = expr->child->value.fnum; break;
+                    case INTEGER: left = expr->child->value.num; break;
+                    case BOOLEAN: left = expr->child->value.bnum; break;
+                    default : break;
+                }
+                switch (expr->child->sibling->vartype){
+                    case FLOAT:   right = expr->child->sibling->value.fnum; break;
+                    case INTEGER: right = expr->child->sibling->value.num; break;
+                    case BOOLEAN: right = expr->child->sibling->value.bnum; break;
+                    default : break;
+                }
+                expr->type = strdup("float");
+                expr->vartype = FLOAT;
+                expr->value.fnum = left + right;
+            }
+            else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == INTEGER){
                 expr->value.num = expr->child->value.num + expr->child->sibling->value.num;
             }
             else if (expr->child->vartype == INTEGER && expr->child->sibling->vartype == BOOLEAN){
@@ -345,6 +418,10 @@ void evaluate_expression(tree* expr){
                     char* strvalue = ((char**)varnode->val->value)[expr->idx];
                     expr->value.str = strdup(strvalue);
                 }
+                else if (varnode->vartype == FLOAT){
+                    float floatvalue = ((float*)varnode->val->value)[expr->idx];
+                    expr->value.fnum = floatvalue;
+                }
             }
             else{
                 if (varnode->vartype == INTEGER){
@@ -358,6 +435,10 @@ void evaluate_expression(tree* expr){
                 else if (varnode->vartype == STRING){
                     char* strvalue = *((char**)varnode->val->value);
                     expr->value.str = strdup(strvalue);
+                }
+                else if (varnode->vartype == FLOAT){
+                    float floatvalue = *((float*)varnode->val->value);
+                    expr->value.fnum = floatvalue;
                 }
             }
         }

@@ -389,25 +389,49 @@ variable_type vartype;
 		|	'(' expr ')'		{ $$ = $2;}
 		|	expr '+' expr 		{ 
 									valunion value;
-									tree* root = createnode("PLUS" , 0 , 0 , &value , INTEGER , "int" ,$1 , NULL);
+									tree* root;
+									if ($1->vartype == FLOAT || $3->vartype == FLOAT){
+										root = createnode("PLUS" , 0 , 0 , &value , FLOAT , "float" ,$1 , NULL);
+									}
+									else{
+										root = createnode("PLUS" , 0 , 0 , &value , INTEGER , "int" ,$1 , NULL);
+									}
 									$1->sibling = $3;
 									$$ = root;
 								}
 		|	expr '-' expr	 	{ 
 									valunion value;
-									tree* root = createnode("MINUS" , 0 , 0 , &value , INTEGER , "int" ,$1, NULL);
+									tree* root;
+									if ($1->vartype == FLOAT || $3->vartype == FLOAT){
+										root = createnode("MINUS" , 0 , 0 , &value , FLOAT , "float" ,$1, NULL);
+									}
+									else{
+										root = createnode("MINUS" , 0 , 0 , &value , INTEGER , "int" ,$1, NULL);
+									}
 									$1->sibling = $3;
 									$$ = root;
 								}
 		|	expr '*' expr 		{
 									valunion value;
-									tree* root = createnode("MULT" , 0 , 0 , &value , INTEGER , "int" ,$1,NULL);
+									tree* root;
+									if ($1->vartype == FLOAT || $3->vartype == FLOAT){
+										root = createnode("MULT" , 0 , 0 , &value , FLOAT , "float" ,$1,NULL);
+									}
+									else{
+										root = createnode("MULT" , 0 , 0 , &value , INTEGER , "int" ,$1,NULL);
+									}
 									$1->sibling = $3;
 									$$ = root;
 								}
 		|	expr '/' expr 		{ 
 									valunion value;
-									tree* root = createnode("DIVIDE" , 0 , 0 , &value , INTEGER , "int" ,$1 , NULL);
+									tree* root;
+									if ($1->vartype == FLOAT || $3->vartype == FLOAT){
+										root = createnode("DIVIDE" , 0 , 0 , &value , FLOAT , "float" ,$1 , NULL);
+									}
+									else{
+										root = createnode("DIVIDE" , 0 , 0 , &value , INTEGER , "int" ,$1 , NULL);
+									}
 									$1->sibling = $3;
 									$$ = root;
 								}

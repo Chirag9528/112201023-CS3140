@@ -66,13 +66,13 @@ variable_type vartype;
 %token T F 
 %token MAIN RETURN
 
+%left LOGICAL_AND LOGICAL_OR
+%left LOGICAL_NOT
 %left '<' '>'
 %left EQUALEQUAL LESSTHANOREQUAL GREATERTHANOREQUAL NOTEQUAL
 %left '+' '-'
 %left '*' '/'
 %left '%'
-%left LOGICAL_AND LOGICAL_OR
-%left LOGICAL_NOT
 
 %type <treenode> expr var_expr assign_stmt Gid Glist ret_type Gdecl statement write_stmt stmt_list cond_stmt Gdecl_list Gdecl_sec
 %type <name> str_expr

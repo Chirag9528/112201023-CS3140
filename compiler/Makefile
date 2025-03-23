@@ -9,8 +9,8 @@ CFLAGS = -Iinclude
 #object files
 OBJS = $(SRC_DIR)/Symboltable.o ${SRC_DIR}/SyntaxTree.o ${SRC_DIR}/Queue.o
 
-Compiler: $(SRC_DIR) $(BIN_DIR) $(OBJS) lex yacc
-	@$(CC) -g $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(OBJS) -o $(BIN_DIR)/Compiler
+compiler: $(SRC_DIR) $(BIN_DIR) $(OBJS) lex yacc
+	@$(CC) -g $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(OBJS) -o $(BIN_DIR)/compiler
 
 #lex and yacc
 lex: $(SRC_DIR)/compiler.l yacc
@@ -36,4 +36,4 @@ $(SRC_DIR)/Queue.o: $(SRC_DIR)/Queue.c $(INCLUDE_DIR)/Queue.h
 # Clean target
 clean:
 	@rm -f $(SRC_DIR)/y.tab.h $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(SRC_DIR)/*.o
-	@rm -f $(BIN_DIR)/Compiler
+	@rm -f $(BIN_DIR)/compiler

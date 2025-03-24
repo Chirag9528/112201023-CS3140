@@ -356,8 +356,16 @@ variable_type vartype;
 									}
 									$$ = var_expr;
 								}
-		|	T					{ }
-		|	F					{ }
+		|	T					{
+									valunion value;
+									value.bnum = 1;
+									$$ = createnode(NULL , 1  , 0 , &value , BOOLEAN , "bool" , NULL,NULL); 
+								}
+		|	F					{ 
+									valunion value;
+									value.num = 0;
+									$$ = createnode(NULL , 1  , 0 , &value , BOOLEAN , "bool" , NULL,NULL);
+								}
 		|	'(' expr ')'		{ $$ = $2;}
 		|	expr '+' expr 		{ 
 									valunion value;

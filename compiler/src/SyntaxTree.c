@@ -383,13 +383,42 @@ void evaluate_statements(tree* root){
                 }
                 breakflag = 0;
             }
+            else if (strcmp(childs->child->name , "WHILE_STMT") == 0){
+                tree* while_cond = childs->child->child;
+                tree* while_body = while_cond->sibling;
+                evaluate_expression(while_cond->child);
+                do {
+                    evaluate_statements(while_body);
+                    evaluate_expression(while_cond->child);
+                } while (while_cond->child->value.bnum);
+            }
         }
         else if (strcmp(childs->name , "ASSIGN_STMT") == 0){
             if (breakflag) break;
             valunion value;
             tree* dollarone = childs->child;
             tree* dollarthree = childs->child->sibling;
-            evaluate_expression(dollarthree);
+            if (dollarthree->name && strcmp(dollarthree->name , "PLUSPLUS") == 0){
+                node* varnode = search_string(dollarone->name);
+                int index = dollarone->idx;
+                if (strcmp(varnode->type , "array") == 0){
+                    if (dollarone->var_idx){
+                        node* var_value = search_string(dollarone->var_idx);
+                        index = *((int*)var_value->val->value);
+                    }
+                    if (varnode->vartype == INTEGER){
+                        int numvalue = ((int*)varnode->val->value)[index];
+                        dollarthree->value.num = numvalue + 1;
+                    }
+                }
+                else{
+                    if (varnode->vartype == INTEGER){
+                        int numvalue = *((int*)varnode->val->value);
+                        dollarthree->value.num = numvalue + 1;
+                    }
+                }
+            }
+            else evaluate_expression(dollarthree);
 
             node* varnode = search_string(dollarone->name);
             dollarone->type = strdup(varnode->type);

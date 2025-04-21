@@ -56,9 +56,11 @@ variable_type vartype;
 %token IF THEN ELSE ENDIF
 %token LOGICAL_AND LOGICAL_NOT LOGICAL_OR
 %token EQUALEQUAL LESSTHANOREQUAL GREATERTHANOREQUAL NOTEQUAL
+%token PLUSPLUS
 %token FOR 
 %token BREAK
-/* %token WHILE DO ENDWHILE */
+%token WHILE DO
+/* %token ENDWHILE */
 %token T F 
 %token MAIN RETURN
 
@@ -273,11 +275,20 @@ variable_type vartype;
 		;
 	
 	assign_stmt:	/* do nothing */		{ $$ = NULL; }
+					|	var_expr PLUSPLUS 	{
+												valunion value1;
+												tree* plusplus = createnode("PLUSPLUS" , 0 , 0 , &value1 , INTEGER , "int" , NULL , NULL);
+
+												$1->sibling = plusplus;
+
+												valunion value;
+												$$ = createnode("ASSIGN_STMT" , 0 , 0 , &value , 0 , NULL , $1 , NULL);
+												
+											}
 					|	var_expr '=' expr 	{	
-											valunion value;
-											$$ = createnode("ASSIGN_STMT", 0 , 0 , &value , 0 , NULL , $1 , NULL);
-											$1->sibling = $3;
-											
+												valunion value;
+												$$ = createnode("ASSIGN_STMT", 0 , 0 , &value , 0 , NULL , $1 , NULL);
+												$1->sibling = $3;
 										}
 		|			var_expr '=' '"' str_expr '"' 	{
 														valunion value;
@@ -318,6 +329,13 @@ variable_type vartype;
 																						tree* for_stmt = createnode("FOR_STMT" , 0 , 0 , NULL , 0 , NULL , for_init , NULL);
 																						$$ = createnode("COND_STMT" , 0 , 0 , NULL , 0 , NULL , for_stmt , NULL);
 																					}
+		|	DO '{' stmt_list '}' WHILE expr ';'			{
+															tree* while_body = createnode("while_body",0,0,NULL,0,NULL,$3 , NULL);
+															tree* while_cond = createnode("while_condition",0,0,NULL , 0 , NULL , $6 , NULL);
+															while_cond->sibling = while_body;
+															tree* while_stmt = createnode("WHILE_STMT" , 0 , 0 , NULL , 0 , NULL , while_cond , NULL);
+															$$ = createnode("COND_STMT" , 0 , 0 , NULL , 0 , NULL , while_stmt , NULL);
+														}
 		;
 	
 	func_stmt:	func_call 		{ 						}

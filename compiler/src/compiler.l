@@ -75,10 +75,10 @@ endif			{
 					return ENDIF;
 				}
 do				{
-					
+					return DO;
 				}
 while			{
-				
+					return WHILE;
 				}
 endwhile		{
 				
@@ -100,6 +100,9 @@ break			{
 				}
 "!="			{
 					return NOTEQUAL;
+				}
+"++"			{
+					return PLUSPLUS;
 				}	
 AND				{
 					return LOGICAL_AND;

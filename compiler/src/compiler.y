@@ -363,7 +363,7 @@ variable_type vartype;
 								}
 		|	F					{ 
 									valunion value;
-									value.num = 0;
+									value.bnum = 0;
 									$$ = createnode(NULL , 1  , 0 , &value , BOOLEAN , "bool" , NULL,NULL);
 								}
 		|	'(' expr ')'		{ $$ = $2;}

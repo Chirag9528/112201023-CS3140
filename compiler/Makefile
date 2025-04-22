@@ -31,9 +31,20 @@ $(SRC_DIR)/SyntaxTree.o: $(SRC_DIR)/SyntaxTree.c $(INCLUDE_DIR)/SyntaxTree.h
 $(SRC_DIR)/Queue.o: $(SRC_DIR)/Queue.c $(INCLUDE_DIR)/Queue.h
 	@$(CC) $(CFLAGS) -c $(SRC_DIR)/Queue.c -o $(SRC_DIR)/Queue.o
 
-
-
 # Clean target
 clean:
 	@rm -f $(SRC_DIR)/y.tab.h $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(SRC_DIR)/*.o
 	@rm -f $(BIN_DIR)/compiler
+
+
+assembly:
+	mips-linux-gnu-gcc-10 file.c -S -o file.s
+	mips-linux-gnu-gcc-10  file.s -o file.out
+	qemu-mips -L /usr/mips-linux-gnu/ file.out
+
+clean_assembly:
+	rm -f file.out file.s code.out
+
+test:
+	mips-linux-gnu-gcc-10	code.s -o code.out
+	qemu-mips -L /usr/mips-linux-gnu/ code.out

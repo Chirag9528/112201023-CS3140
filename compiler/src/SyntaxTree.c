@@ -533,3 +533,239 @@ void print(tree* root , int tabspace){
     }
 
 }
+
+void mips_code_globl_decl(FILE* fp , tree* root){
+    int sectionflag = 0;
+    tree* child = root->child;
+    if (child) fprintf(fp , "\t.text\n");
+    while (child){
+        tree* type = child->child;
+        if (type->name && strcmp(type->name , "integer") == 0){
+            tree* vars = type->sibling;
+            while (vars){
+                if (strcmp(vars->type , "int") == 0){
+                    fprintf(fp , "\t.globl\t%s\n",vars->name);
+                    if (!sectionflag){
+                        sectionflag = 1;
+                        fprintf(fp , "\t.section\t.bss,\"aw\",@nobits\n");
+                    }
+                    fprintf(fp , "\t.align\t2\n");
+                    fprintf(fp , "\t.type\t%s, @object\n",vars->name);
+                    fprintf(fp , "\t.size\t%s, 4\n",vars->name);
+                    fprintf(fp , "%s:\n",vars->name);
+                    fprintf(fp , "\t.space\t4\n");
+                }
+                else if (strcmp(vars->type , "array") == 0){
+                    fprintf(fp , "\t.globl\t%s\n",vars->name);
+                    if (!sectionflag){
+                        sectionflag = 1;
+                        fprintf(fp , "\t.section\t.bss,\"aw\",@nobits\n");
+                    }
+                    fprintf(fp , "\t.align\t2\n");
+                    fprintf(fp , "\t.type\t%s, @object\n",vars->name);
+                    fprintf(fp , "\t.size\t%s, %d\n",vars->name , vars->idx*4);
+                    fprintf(fp , "%s:\n",vars->name);
+                    fprintf(fp , "\t.space\t%d\n",vars->idx*4);
+                }
+                vars = vars->sibling;
+            }
+        }
+        child = child->sibling;
+    }
+}
+
+void mips_code_call_func(FILE* fp , tree* func_name){
+    if (strcmp(func_name->name , "WRITE") == 0){
+        tree* write_vars = func_name->sibling;
+        while (write_vars){
+            node* variable = search_string(write_vars->name);
+            if (strcmp(variable->type , "array") == 0){
+                if (write_vars->var_idx){
+                    node* var_value = search_string(write_vars->var_idx);
+                    write_vars->idx = *((int*)var_value->val->value);
+                }
+                switch (variable->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlui\t$2,%%hi(%s)\n",write_vars->name);
+                    fprintf(fp , "\taddiu\t$2,$2,%%lo(%s)\n",write_vars->name);
+                    fprintf(fp , "\tlw\t$2,%d($2)\n",4*write_vars->idx);
+                    fprintf(fp , "\tmove\t$5,$2\n");
+                    if (write_vars->sibling){
+                        fprintf(fp , "\tlui\t$2,%%hi($LC1)\n");
+                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC1)\n");
+                    }
+                    else{
+                        fprintf(fp , "\tlui\t$2,%%hi($LC2)\n");
+                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC2)\n");
+                    }
+                    fprintf(fp , "\tlw\t$2,%%call16(printf)($28)\n");
+                    fprintf(fp , "\tmove\t$25,$2\n");
+                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,printf\n");
+                    fprintf(fp , "1:\tjalr\t$25\n");
+                    fprintf(fp , "\tnop\n");
+                    fprintf(fp , "\n");
+                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
+                    break;
+                default:
+                    break;
+                }
+            }
+            else{
+                switch (variable->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlui\t$2,%%hi(%s)\n",write_vars->name);
+                    fprintf(fp , "\tlw\t$2,%%lo(%s)($2)\n",write_vars->name);
+                    fprintf(fp , "\tmove\t$5,$2\n");
+                    if (write_vars->sibling){
+                        fprintf(fp , "\tlui\t$2,%%hi($LC1)\n");
+                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC1)\n");
+                    }
+                    else{
+                        fprintf(fp , "\tlui\t$2,%%hi($LC2)\n");
+                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC2)\n");
+                    }
+                    fprintf(fp , "\tlw\t$2,%%call16(printf)($28)\n");
+                    fprintf(fp , "\tmove\t$25,$2\n");
+                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,printf\n");
+                    fprintf(fp , "1:\tjalr\t$25\n");
+                    fprintf(fp , "\tnop\n");
+                    fprintf(fp , "\n");
+                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
+                    break;
+                
+                default:
+                    break;
+                }
+            }
+            write_vars = write_vars->sibling;
+        }
+    }
+    else if (strcmp(func_name->name , "READ") == 0){
+        tree* read_vars = func_name->sibling;
+        while (read_vars){
+            node* variable = search_string(read_vars->name);
+            if (strcmp(variable->type , "array") == 0){
+                if (read_vars->var_idx){
+                    node* var_value = search_string(read_vars->var_idx);
+                    read_vars->idx = *((int*)var_value->val->value);
+                }
+                switch (variable->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlui\t$2,%%hi(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                    fprintf(fp , "\taddiu\t$5,$2,%%lo(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
+                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
+                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
+                    fprintf(fp , "\tmove\t$25,$2\n");
+                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
+                    fprintf(fp , "1:\tjalr\t$25\n");
+                    fprintf(fp , "\tnop\n");
+                    fprintf(fp , "\n");
+                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
+                    break;
+                default:
+                    break;
+                }
+            }
+            else{
+                switch (variable->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlui\t$2,%%hi(%s)\n",read_vars->name);
+                    fprintf(fp , "\taddiu\t$5,$2,%%lo(%s)\n",read_vars->name);
+                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
+                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
+                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
+                    fprintf(fp , "\tmove\t$25,$2\n");
+                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
+                    fprintf(fp , "1:\tjalr\t$25\n");
+                    fprintf(fp , "\tnop\n");
+                    fprintf(fp , "\n");
+                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
+                    break;
+                
+                default:
+                    break;
+                }
+            }
+            read_vars = read_vars->sibling;
+        }
+    }
+}
+
+void mips_code_stmt_list(FILE* fp , tree* root){
+    int global_pointer_setup = 0;
+    tree* child = root->child;
+    while (child){
+        if (strcmp(child->name , "ASSIGN_STMT") == 0){
+
+        }
+        else if (strcmp(child->name , "COND_STMT") == 0){
+
+        }
+        else if (strcmp(child->name , "CALL") == 0){
+            if (!global_pointer_setup){
+                fprintf(fp , "\tlui\t$28,%%hi(__gnu_local_gp)\n");
+	            fprintf(fp , "\taddiu\t$28,$28,%%lo(__gnu_local_gp)\t\t\t# $gp ($28) is set up for accessing global data like scanf\n");
+	            fprintf(fp , "\t.cprestore\t16\t\t\t# tells compiler to store $gp at offset 16 in the stack frame\n");
+                global_pointer_setup = 1;
+            }
+            mips_code_call_func(fp , child->child);
+        }
+        else if (strcmp(child->name , "break") == 0){
+
+        }
+        child = child->sibling;
+    }
+}
+
+void generate_mips_code(FILE* fp , tree* root){
+    fprintf(fp , "\t.file\t1\t\"code.c\"\n");
+    fprintf(fp , "\t.section\t.mdebug.abi32\n");
+    fprintf(fp , "\t.previous\n");
+    fprintf(fp , "\t.nan\tlegacy\n");
+    fprintf(fp , "\t.module\tfp=32\n");
+    fprintf(fp , "\t.module\tnooddspreg\n");
+    fprintf(fp , "\t.abicalls\n");
+    mips_code_globl_decl(fp , root->child);
+    fprintf(fp , "\t.rdata\n");
+    fprintf(fp , "\t.align\t2\n");
+    fprintf(fp , "$LC0:\n");
+    fprintf(fp , "\t.ascii\t\"%%d\\000\"\n");
+    fprintf(fp , "\t.align\t2\n");
+    fprintf(fp , "$LC1:\n");
+    fprintf(fp , "\t.ascii\t\"%%d \\000\"\n");
+    fprintf(fp , "\t.align\t2\n");
+    fprintf(fp , "$LC2:\n");
+    fprintf(fp , "\t.ascii\t\"%%d\\012\\000\"\n");
+    fprintf(fp , "\t.text\n");
+    fprintf(fp , "\t.align\t2\n");
+    fprintf(fp , "\t.globl\tmain\n");
+    fprintf(fp , "\t.set\tnomips16\n");
+	fprintf(fp , "\t.set\tnomicromips\n");
+    fprintf(fp , "\t.ent\tmain\n");
+	fprintf(fp , "\t.type\tmain,\t@function\n");
+    fprintf(fp , "main:\n");
+	fprintf(fp , "\t.frame\t$fp,32,$31\t\t# vars= 0, regs= 3/0, args= 16, gp= 8\n");
+	fprintf(fp , "\t.mask\t0xc0000000,-4\t\t\t# tells debugger which callee-saved registers are saved ($fp and $ra)\n");
+	fprintf(fp , "\t.fmask\t0x00000000,0\t\t\t# no floating-point registers saved\n");
+	fprintf(fp , "\t.set\tnoreorder\n");
+	fprintf(fp , "\t.set\tnomacro\n");
+	fprintf(fp , "\taddiu\t$sp,$sp,-32\t\t\t# make space for 32 bytes on the stack\n");
+    fprintf(fp , "\tsw\t$31,28($sp)\t\t\t# save return address ($ra = $31) at offset 28\n");
+	fprintf(fp , "\tsw\t$fp,24($sp)\n");
+	fprintf(fp , "\tmove\t$fp,$sp\n");
+    mips_code_stmt_list(fp , root->child->sibling);
+    fprintf(fp , "\tmove\t$2,$0\t\t\t# set return value to 0 (in $v0 = $2)\n");
+	fprintf(fp , "\tmove\t$sp,$fp\n");
+	fprintf(fp , "\tlw\t$31,28($sp)\t\t\t# restore return address\n");
+	fprintf(fp , "\tlw\t$fp,24($sp)\t\t\t# restore old frame pointer\n");
+	fprintf(fp , "\taddiu\t$sp,$sp,32\n");
+	fprintf(fp , "\tjr\t$31\n");
+	fprintf(fp , "\tnop\n\n");
+	fprintf(fp , "\t.set\tmacro\n");
+	fprintf(fp , "\t.set\treorder\n");
+	fprintf(fp ,  "\t.end\tmain\n");
+	fprintf(fp , "\t.size\tmain,\t.-main\n");
+	fprintf(fp , "\t.ident\t\"GCC: (Ubuntu 10.5.0-4ubuntu2) 10.5.0\"\n");
+	fprintf(fp , "\t.section\t.note.GNU-stack,\"\",@progbits\n");
+}

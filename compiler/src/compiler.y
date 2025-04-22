@@ -33,6 +33,7 @@ void evaluate_expression(tree* expr);
 void evaluate_tree(tree* root);
 tree* createnode(char* , int , int , valunion* , variable_type , char* , tree* , tree*);
 void print(tree* , int);
+void generate_mips_code(FILE* , tree*);
 
 variable_type vartype; 
 
@@ -72,7 +73,7 @@ variable_type vartype;
 %left '*' '/'
 %left '%'
 
-%type <treenode> expr var_expr assign_stmt Gid Glist ret_type Gdecl statement write_stmt stmt_list cond_stmt Gdecl_list Gdecl_sec
+%type <treenode> expr var_expr assign_stmt Gid Glist ret_type Gdecl statement write_stmt read_stmt stmt_list cond_stmt Gdecl_list Gdecl_sec expr_list var_expr_list
 %type <name> str_expr
 
 
@@ -88,10 +89,17 @@ variable_type vartype;
 												
 												evaluate_tree(prog);
 
-
 												printf("Abstract Syntax Tree (AST):\n===========================\n\n");
 												print(prog , 0);
 												printf("\n");
+
+												FILE* fp = fopen("code.s" , "w");
+												if (fp == NULL){
+													printf("Failed to Open File\n");
+												}
+												else{
+													generate_mips_code(fp , prog);
+												}
 
 											}
 		;
@@ -257,21 +265,42 @@ variable_type vartype;
 										}
 		;
 
-	read_stmt:	READ '(' var_expr ')' {						 }
+	read_stmt:	READ '(' var_expr_list ')' 	{
+												tree* read_child = createnode("READ" , 0 , 0 , NULL , 0 , NULL , NULL , $3);
+												tree* root = createnode("CALL" , 0 , 0 , NULL , 0 , NULL , read_child , NULL);
+												$$ = root;
+	 									}
 		;
+	
+	var_expr_list:	var_expr			{
+											$$ = $1;
+										}
+			|		var_expr ',' var_expr_list		{
+														$1->sibling = $3;
+														$$ = $1;
+													}
+			;
 
-	write_stmt:	WRITE '(' expr ')' 	{
-										tree* write_child = createnode("WRITE" , 0 , 0 , NULL , 0 , NULL , NULL , $3);
-										tree* root = createnode("CALL" , 0 , 0 , NULL , 0 , NULL , write_child , NULL);
-										$$ = root;
-									}
-		 | WRITE '(''"' str_expr '"'')'     {
+	write_stmt:	WRITE '(' expr_list ')' 	{
+												tree* write_child = createnode("WRITE" , 0 , 0 , NULL , 0 , NULL , NULL , $3);
+												tree* root = createnode("CALL" , 0 , 0 , NULL , 0 , NULL , write_child , NULL);
+												$$ = root;
+											}
+		 	|	WRITE '(''"' str_expr '"'')'     {
 												tree* str_expr = createnode($4 , 0 , 0 , NULL , STRING , "char*" , NULL , NULL);
 												tree* write_child = createnode("WRITE" , 0 , 0 , NULL , 0 , NULL , NULL , str_expr);
 												tree* root = createnode("CALL" , 0 , 0 , NULL , 0 , NULL , write_child , NULL);
 												$$ = root;
 		 									}
 
+		;
+	expr_list: expr				{
+									$$ = $1;
+								}
+		|	expr ',' expr_list	{
+									$1->sibling = $3;
+									$$ = $1;
+								}
 		;
 	
 	assign_stmt:	/* do nothing */		{ $$ = NULL; }
@@ -499,6 +528,5 @@ int main(){
 	init();
 	yyparse();
 	print_hash_table();
-	
 	return 0;
 }

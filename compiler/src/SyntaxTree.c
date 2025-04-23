@@ -574,135 +574,6 @@ void mips_code_globl_decl(FILE* fp , tree* root){
     }
 }
 
-void mips_code_call_func(FILE* fp , tree* func_name){
-    if (strcmp(func_name->name , "WRITE") == 0){
-        tree* write_vars = func_name->sibling;
-        while (write_vars){
-            node* variable = search_string(write_vars->name);
-            if (strcmp(variable->type , "array") == 0){
-                switch (variable->vartype){
-                case INTEGER:
-                    fprintf(fp , "\tlui\t$2,%%hi(%s)\n",write_vars->name);
-                    fprintf(fp , "\taddiu\t$2,$2,%%lo(%s)\n",write_vars->name);
-                    if (write_vars->var_idx){
-                        fprintf(fp , "\tlui\t$3,%%hi(%s)\n", write_vars->var_idx);
-                        fprintf(fp , "\tlw\t$3,%%lo(%s)($3)\n", write_vars->var_idx);
-                        fprintf(fp , "\tsll\t$3,$3,2\n"); 
-                        fprintf(fp , "\tadd\t$4,$2,$3\n");
-                        fprintf(fp , "\tlw\t$2,0($4)\n");
-                    }
-                    else{
-                        fprintf(fp , "\tlw\t$2,%d($2)\n",4*write_vars->idx);
-                    }
-                    fprintf(fp , "\tmove\t$5,$2\n");
-                    if (write_vars->sibling){
-                        fprintf(fp , "\tlui\t$2,%%hi($LC1)\n");
-                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC1)\n");
-                    }
-                    else{
-                        fprintf(fp , "\tlui\t$2,%%hi($LC2)\n");
-                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC2)\n");
-                    }
-                    fprintf(fp , "\tlw\t$2,%%call16(printf)($28)\n");
-                    fprintf(fp , "\tmove\t$25,$2\n");
-                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,printf\n");
-                    fprintf(fp , "1:\tjalr\t$25\n");
-                    fprintf(fp , "\tnop\n");
-                    fprintf(fp , "\n");
-                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
-                    break;
-                default:
-                    break;
-                }
-            }
-            else{
-                switch (variable->vartype){
-                case INTEGER:
-                    fprintf(fp , "\tlui\t$2,%%hi(%s)\n",write_vars->name);
-                    fprintf(fp , "\tlw\t$2,%%lo(%s)($2)\n",write_vars->name);
-                    fprintf(fp , "\tmove\t$5,$2\n");
-                    if (write_vars->sibling){
-                        fprintf(fp , "\tlui\t$2,%%hi($LC1)\n");
-                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC1)\n");
-                    }
-                    else{
-                        fprintf(fp , "\tlui\t$2,%%hi($LC2)\n");
-                        fprintf(fp , "\taddiu\t$4,$2,%%lo($LC2)\n");
-                    }
-                    fprintf(fp , "\tlw\t$2,%%call16(printf)($28)\n");
-                    fprintf(fp , "\tmove\t$25,$2\n");
-                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,printf\n");
-                    fprintf(fp , "1:\tjalr\t$25\n");
-                    fprintf(fp , "\tnop\n");
-                    fprintf(fp , "\n");
-                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
-                    break;
-                
-                default:
-                    break;
-                }
-            }
-            write_vars = write_vars->sibling;
-        }
-    }
-    else if (strcmp(func_name->name , "READ") == 0){
-        tree* read_vars = func_name->sibling;
-        while (read_vars){
-            node* variable = search_string(read_vars->name);
-            if (strcmp(variable->type , "array") == 0){
-                switch (variable->vartype){
-                case INTEGER:
-                    if (read_vars->var_idx){
-                        fprintf(fp , "\tlui\t$2,%%hi(%s)\n", read_vars->name);
-                        fprintf(fp , "\taddiu\t$2,$2,%%lo(%s)\n", read_vars->name);
-                        fprintf(fp , "\tlui\t$4,%%hi(%s)\n", read_vars->var_idx);
-                        fprintf(fp , "\tlw\t$4,%%lo(%s)($4)\n", read_vars->var_idx);
-                        fprintf(fp , "\tsll\t$4,$4,2\n");   
-                        fprintf(fp , "\tadd\t$5,$2,$4\n");
-                    }
-                    else{
-                        fprintf(fp , "\tlui\t$2,%%hi(%s+%d)\n",read_vars->name,4*read_vars->idx);
-                        fprintf(fp , "\taddiu\t$5,$2,%%lo(%s+%d)\n",read_vars->name,4*read_vars->idx);
-                    }
-                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
-                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
-                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
-                    fprintf(fp , "\tmove\t$25,$2\n");
-                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
-                    fprintf(fp , "1:\tjalr\t$25\n");
-                    fprintf(fp , "\tnop\n");
-                    fprintf(fp , "\n");
-                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
-                    break;
-                default:
-                    break;
-                }
-            }
-            else{
-                switch (variable->vartype){
-                case INTEGER:
-                    fprintf(fp , "\tlui\t$2,%%hi(%s)\n",read_vars->name);
-                    fprintf(fp , "\taddiu\t$5,$2,%%lo(%s)\n",read_vars->name);
-                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
-                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
-                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
-                    fprintf(fp , "\tmove\t$25,$2\n");
-                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
-                    fprintf(fp , "1:\tjalr\t$25\n");
-                    fprintf(fp , "\tnop\n");
-                    fprintf(fp , "\n");
-                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
-                    break;
-                
-                default:
-                    break;
-                }
-            }
-            read_vars = read_vars->sibling;
-        }
-    }
-}
-
 void mips_code_expression(FILE* fp , tree* root){
     if (root->name){
         if (strcmp(root->name , "PLUS") == 0){
@@ -1019,6 +890,8 @@ void mips_code_expression(FILE* fp , tree* root){
             }
         }
         else{
+            node* variable = search_string(root->name);
+            root->type = strdup(variable->type);
             if (strcmp(root->type ,  "array") == 0){
                 switch (root->vartype){
                 case INTEGER:
@@ -1076,7 +949,6 @@ void mips_code_stmt_list(FILE* fp , tree* root){
     tree* child = root->child;
     while (child){
         if (strcmp(child->name , "ASSIGN_STMT") == 0){
-            int reg_count = 0;
             tree* var = child->child;
             tree* exp = child->child->sibling;
             mips_code_expression(fp , exp);
@@ -1133,6 +1005,89 @@ void mips_code_stmt_list(FILE* fp , tree* root){
 
         }
         child = child->sibling;
+    }
+}
+
+
+void mips_code_call_func(FILE* fp , tree* func_name){
+    if (strcmp(func_name->name , "WRITE") == 0){
+        tree* write_vars = func_name->sibling;
+        while (write_vars){
+            mips_code_expression(fp , write_vars);
+            fprintf(fp , "\tlw\t$5,0($sp)\n");            // Load result from stack
+            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+            if (write_vars->sibling){
+                fprintf(fp , "\tlui\t$2,%%hi($LC1)\n");  
+                fprintf(fp , "\taddiu\t$4,$2,%%lo($LC1)\n");
+            }
+            else{
+                fprintf(fp , "\tlui\t$2,%%hi($LC2)\n");
+                fprintf(fp , "\taddiu\t$4,$2,%%lo($LC2)\n");
+            }
+            fprintf(fp , "\tlw\t$2,%%call16(printf)($28)\n");
+            fprintf(fp , "\tmove\t$25,$2\n");
+            fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,printf\n");
+            fprintf(fp , "1:\tjalr\t$25\n");
+            fprintf(fp , "\tnop\n\n");
+            fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# Restore global pointer\n");
+            write_vars = write_vars->sibling;
+        }
+    }
+    else if (strcmp(func_name->name , "READ") == 0){
+        tree* read_vars = func_name->sibling;
+        while (read_vars){
+            node* variable = search_string(read_vars->name);
+            if (strcmp(variable->type , "array") == 0){
+                switch (variable->vartype){
+                case INTEGER:
+                    if (read_vars->var_idx){
+                        fprintf(fp , "\tlui\t$2,%%hi(%s)\n", read_vars->name);
+                        fprintf(fp , "\taddiu\t$2,$2,%%lo(%s)\n", read_vars->name);
+                        fprintf(fp , "\tlui\t$4,%%hi(%s)\n", read_vars->var_idx);
+                        fprintf(fp , "\tlw\t$4,%%lo(%s)($4)\n", read_vars->var_idx);
+                        fprintf(fp , "\tsll\t$4,$4,2\n");   
+                        fprintf(fp , "\tadd\t$5,$2,$4\n");
+                    }
+                    else{
+                        fprintf(fp , "\tlui\t$2,%%hi(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                        fprintf(fp , "\taddiu\t$5,$2,%%lo(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                    }
+                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
+                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
+                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
+                    fprintf(fp , "\tmove\t$25,$2\n");
+                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
+                    fprintf(fp , "1:\tjalr\t$25\n");
+                    fprintf(fp , "\tnop\n");
+                    fprintf(fp , "\n");
+                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
+                    break;
+                default:
+                    break;
+                }
+            }
+            else{
+                switch (variable->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlui\t$2,%%hi(%s)\n",read_vars->name);
+                    fprintf(fp , "\taddiu\t$5,$2,%%lo(%s)\n",read_vars->name);
+                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
+                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
+                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
+                    fprintf(fp , "\tmove\t$25,$2\n");
+                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
+                    fprintf(fp , "1:\tjalr\t$25\n");
+                    fprintf(fp , "\tnop\n");
+                    fprintf(fp , "\n");
+                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
+                    break;
+                
+                default:
+                    break;
+                }
+            }
+            read_vars = read_vars->sibling;
+        }
     }
 }
 

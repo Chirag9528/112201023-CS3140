@@ -580,15 +580,20 @@ void mips_code_call_func(FILE* fp , tree* func_name){
         while (write_vars){
             node* variable = search_string(write_vars->name);
             if (strcmp(variable->type , "array") == 0){
-                if (write_vars->var_idx){
-                    node* var_value = search_string(write_vars->var_idx);
-                    write_vars->idx = *((int*)var_value->val->value);
-                }
                 switch (variable->vartype){
                 case INTEGER:
                     fprintf(fp , "\tlui\t$2,%%hi(%s)\n",write_vars->name);
                     fprintf(fp , "\taddiu\t$2,$2,%%lo(%s)\n",write_vars->name);
-                    fprintf(fp , "\tlw\t$2,%d($2)\n",4*write_vars->idx);
+                    if (write_vars->var_idx){
+                        fprintf(fp , "\tlui\t$3,%%hi(%s)\n", write_vars->var_idx);
+                        fprintf(fp , "\tlw\t$3,%%lo(%s)($3)\n", write_vars->var_idx);
+                        fprintf(fp , "\tsll\t$3,$3,2\n"); 
+                        fprintf(fp , "\tadd\t$4,$2,$3\n");
+                        fprintf(fp , "\tlw\t$2,0($4)\n");
+                    }
+                    else{
+                        fprintf(fp , "\tlw\t$2,%d($2)\n",4*write_vars->idx);
+                    }
                     fprintf(fp , "\tmove\t$5,$2\n");
                     if (write_vars->sibling){
                         fprintf(fp , "\tlui\t$2,%%hi($LC1)\n");
@@ -645,14 +650,20 @@ void mips_code_call_func(FILE* fp , tree* func_name){
         while (read_vars){
             node* variable = search_string(read_vars->name);
             if (strcmp(variable->type , "array") == 0){
-                if (read_vars->var_idx){
-                    node* var_value = search_string(read_vars->var_idx);
-                    read_vars->idx = *((int*)var_value->val->value);
-                }
                 switch (variable->vartype){
                 case INTEGER:
-                    fprintf(fp , "\tlui\t$2,%%hi(%s+%d)\n",read_vars->name,4*read_vars->idx);
-                    fprintf(fp , "\taddiu\t$5,$2,%%lo(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                    if (read_vars->var_idx){
+                        fprintf(fp , "\tlui\t$2,%%hi(%s)\n", read_vars->name);
+                        fprintf(fp , "\taddiu\t$2,$2,%%lo(%s)\n", read_vars->name);
+                        fprintf(fp , "\tlui\t$4,%%hi(%s)\n", read_vars->var_idx);
+                        fprintf(fp , "\tlw\t$4,%%lo(%s)($4)\n", read_vars->var_idx);
+                        fprintf(fp , "\tsll\t$4,$4,2\n");   
+                        fprintf(fp , "\tadd\t$5,$2,$4\n");
+                    }
+                    else{
+                        fprintf(fp , "\tlui\t$2,%%hi(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                        fprintf(fp , "\taddiu\t$5,$2,%%lo(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                    }
                     fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
                     fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
                     fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
@@ -692,12 +703,419 @@ void mips_code_call_func(FILE* fp , tree* func_name){
     }
 }
 
+void mips_code_expression(FILE* fp , tree* root){
+    if (root->name){
+        if (strcmp(root->name , "PLUS") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tadd\t$t2,$t0,$t1\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "MINUS") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tsub\t$t2,$t0,$t1\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "MULT") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tmult\t$t0,$t1\n");
+                            fprintf(fp , "\tmflo\t$t2\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "DIVIDE") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tdiv\t$t0,$t1\n");
+                            fprintf(fp , "\tmflo\t$t2\n");  // mfhi will store remainder
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "MODULO") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tdiv\t$t0,$t1\n");
+                            fprintf(fp , "\tmfhi\t$t2\n");  // mflo will store quotient
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "LESSTHAN") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tslt\t$t2,$t0,$t1\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "GREATERTHAN") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tslt\t$t2,$t1,$t0\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "GREATERTHANOREQUAL") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tslt\t$t2,$t0,$t1\n");
+                            fprintf(fp , "\txori\t$t2,$t2,1\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "LESSTHANOREQUAL") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tslt\t$t2,$t1,$t0\n");
+                            fprintf(fp , "\txori\t$t2,$t2,1\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "NOTEQUAL") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\txor\t$t2,$t0,$t1\n");         // t2 = a ^ b
+                            fprintf(fp , "\tsltu\t$t2,$zero,$t2\n");       // t2 = (a != b)
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "EQUALEQUAL") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\txor\t$t2,$t0,$t1\n");         // t2 = a ^ b
+                            fprintf(fp , "\tsltu\t$t2,$t2,1\n");       // t2 = (a != b)
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "LOGICAL_AND") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tsltu\t$t3,$zero,$t0\n");        // t3 = (operand1 != 0)
+                            fprintf(fp , "\tsltu\t$t4,$zero,$t1\n");        // t4 = (operand2 != 0)
+                            fprintf(fp , "\tand\t$t2,$t3,$t4\n");           // t2 = t3 && t4      // t2 = (a != b)
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (strcmp(root->name , "LOGICAL_OR") == 0){
+            mips_code_expression(fp , root->child);
+            mips_code_expression(fp , root->child->sibling);
+            switch (root->child->vartype){
+                case INTEGER:
+                    switch (root->child->sibling->vartype){
+                        case INTEGER:
+                            fprintf(fp , "\tlw\t$t1,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                            fprintf(fp , "\tsltu\t$t3,$zero,$t0\n");        // t3 = (operand1 != 0)
+                            fprintf(fp , "\tsltu\t$t4,$zero,$t1\n");        // t4 = (operand2 != 0)
+                            fprintf(fp , "\tor\t$t2,$t3,$t4\n");           // t2 = t3 && t4      // t2 = (a != b)
+                            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                            fprintf(fp , "\tsw\t$t2,0($sp)\n");
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else{
+            if (strcmp(root->type ,  "array") == 0){
+                switch (root->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlui\t$t0,%%hi(%s)\n",root->name);
+                    fprintf(fp , "\taddiu\t$t0,$t0,%%lo(%s)\n",root->name);
+                    if (root->var_idx){
+                        fprintf(fp , "\tlui\t$t1,%%hi(%s)\n",root->var_idx);
+                        fprintf(fp , "\tlw\t$t1,%%lo(%s)($t1)\n",root->var_idx);
+                        fprintf(fp , "\tsll\t$t1,$t1,2\n");              // t1 = i * 4 (for word offset)
+                        fprintf(fp , "\tadd\t$t2,$t0,$t1\n");            // t2 = base + index * 4
+                        fprintf(fp , "\tlw\t$t3,0($t2)\n");              // load value at x[i]
+                        fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                        fprintf(fp , "\tsw\t$t3,0($sp)\n");
+                    }
+                    else{
+                        fprintf(fp , "\tlw\t$t1,%d($t0)\n",4*root->idx);
+                        fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                        fprintf(fp , "\tsw\t$t1,0($sp)\n");
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+            else{
+                switch (root->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlui\t$t0,%%hi(%s)\n",root->name);
+                    fprintf(fp , "\tlw\t$t0,%%lo(%s)($t0)\n",root->name);
+                    fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+                    fprintf(fp , "\tsw\t$t0,0($sp)\n");
+                    break;
+                
+                default:
+                    break;
+                }
+            }
+        }
+    }
+    else{
+        switch (root->vartype){
+        case INTEGER:
+            fprintf(fp , "\tli\t$t0,%d\n", root->value.num);
+            fprintf(fp , "\taddiu\t$sp,$sp,-4\n");
+            fprintf(fp , "\tsw\t$t0,0($sp)\n");
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 void mips_code_stmt_list(FILE* fp , tree* root){
     int global_pointer_setup = 0;
     tree* child = root->child;
     while (child){
         if (strcmp(child->name , "ASSIGN_STMT") == 0){
-
+            int reg_count = 0;
+            tree* var = child->child;
+            tree* exp = child->child->sibling;
+            mips_code_expression(fp , exp);
+            if (strcmp(var->type , "array") == 0){
+                switch (var->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlw\t$t4,0($sp)\n");
+                    fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                    fprintf(fp , "\tlui\t$t0,%%hi(%s)\n",var->name);
+                    fprintf(fp , "\taddiu\t$t0,$t0,%%lo(%s)\n",var->name);
+                    if (var->var_idx){
+                        fprintf(fp , "\tlui\t$t1,%%hi(%s)\n",var->var_idx);
+                        fprintf(fp , "\tlw\t$t1,%%lo(%s)($t1)\n",var->var_idx);
+                        fprintf(fp , "\tsll\t$t1,$t1,2\n");              // t1 = i * 4 (for word offset)
+                        fprintf(fp , "\tadd\t$t2,$t0,$t1\n");            // t2 = base + index * 4
+                        fprintf(fp , "\tsw\t$t4,0($t2)\n");              // store value at x[i]
+                    }
+                    else{
+                        fprintf(fp , "\tsw\t$t4,%d($t0)\n",4*var->idx);
+                    }
+                    break;
+                
+                default:
+                    break;
+                }
+            }
+            else{
+                switch (var->vartype){
+                case INTEGER:
+                    fprintf(fp , "\tlw\t$t0,0($sp)\n");
+                    fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+                    fprintf(fp , "\tlui\t$t1,%%hi(%s)\n" , var->name);
+                    fprintf(fp , "\tsw\t$t0,%%lo(%s)($t1)\n" , var->name);
+                    break;
+                
+                default:
+                    break;
+                }
+            }
         }
         else if (strcmp(child->name , "COND_STMT") == 0){
 

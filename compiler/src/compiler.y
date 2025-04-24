@@ -397,7 +397,7 @@ variable_type vartype;
 								}
 		|	var_expr			{ 	
 									valunion value;
-									tree* var_expr = createnode($1->name , 1 , $1->idx , &value , $1->vartype , NULL , $1->child , $1->sibling);
+									tree* var_expr = createnode($1->name , 1 , $1->idx , &value , $1->vartype , $1->type , $1->child , $1->sibling);
 									if ($1->var_idx){
 										var_expr->var_idx = strdup($1->var_idx);
 									}
@@ -509,7 +509,7 @@ variable_type vartype;
 					}
 		|	var_expr '[' expr ']'	{	
 										if ($3->name){
-											tree* temp = createnode($1->name , 1 , 0 , NULL , 0 , "array" , NULL , NULL);
+											tree* temp = createnode($1->name , 1 , 0 , NULL , 0 , "array" , $3 , NULL);
 											temp->var_idx = strdup($3->name);
 											$$ = temp;
 										}

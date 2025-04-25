@@ -7,6 +7,7 @@
 #include <math.h>
 #include "Queue.h"
 #include "Symboltable.h"
+#include "Stack.h"
 
 typedef union __valunion{
     int num;

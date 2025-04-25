@@ -7,7 +7,7 @@ BIN_DIR = bin
 CFLAGS = -Iinclude
 
 #object files
-OBJS = $(SRC_DIR)/Symboltable.o ${SRC_DIR}/SyntaxTree.o ${SRC_DIR}/Queue.o
+OBJS = $(SRC_DIR)/Symboltable.o ${SRC_DIR}/SyntaxTree.o ${SRC_DIR}/Queue.o ${SRC_DIR}/Stack.o
 
 compiler: $(SRC_DIR) $(BIN_DIR) $(OBJS) lex yacc
 	@$(CC) -g $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(OBJS) -o $(BIN_DIR)/compiler
@@ -30,6 +30,9 @@ $(SRC_DIR)/SyntaxTree.o: $(SRC_DIR)/SyntaxTree.c $(INCLUDE_DIR)/SyntaxTree.h
 
 $(SRC_DIR)/Queue.o: $(SRC_DIR)/Queue.c $(INCLUDE_DIR)/Queue.h
 	@$(CC) $(CFLAGS) -c $(SRC_DIR)/Queue.c -o $(SRC_DIR)/Queue.o
+
+$(SRC_DIR)/Stack.o: $(SRC_DIR)/Stack.c $(INCLUDE_DIR)/Stack.h
+	@$(CC) $(CFLAGS) -c $(SRC_DIR)/Stack.c -o $(SRC_DIR)/Stack.o
 
 # Clean target
 clean:

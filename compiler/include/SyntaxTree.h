@@ -7,7 +7,6 @@
 #include <math.h>
 #include "Queue.h"
 #include "Symboltable.h"
-#include "Stack.h"
 
 typedef union __valunion{
     int num;
@@ -42,12 +41,6 @@ void evaluate_tree(tree* root);
 
 void print(tree* root , int tabspace);
 
-void mips_code_globl_decl(FILE* fp , tree* root);
 
-void mips_code_call_func(FILE* fp , tree* func_name);
-
-void mips_code_stmt_list(FILE* fp , tree* root);
-
-void generate_mips_code(FILE* fp , tree* root);
 
 #endif

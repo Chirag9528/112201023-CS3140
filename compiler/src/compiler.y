@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include "../include/Symboltable.h"
 #include "../include/SyntaxTree.h"
+#include "../include/CodeGeneration.h"
 // #define YYSTYPE double
 int yylex();
 void yyerror( char* );

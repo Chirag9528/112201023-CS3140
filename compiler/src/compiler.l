@@ -129,6 +129,11 @@ false			{
 								yylval.name = strdup(yytext);
 								return VAR;
 							}
+
+"//"[^\n]*					{ 
+								/* comments */
+							}
+
 [-+*/=()><;,\{\}\[\]\%]		{
 								return yytext[0];
 

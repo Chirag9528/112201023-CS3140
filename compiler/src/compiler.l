@@ -89,6 +89,9 @@ for 			{
 break			{
 					return BREAK;
 				}		
+continue		{
+					return CONTINUE;
+				}
 "=="			{
 					return EQUALEQUAL;
 				}	

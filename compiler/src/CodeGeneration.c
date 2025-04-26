@@ -1,5 +1,6 @@
 #include "./../include/CodeGeneration.h"
 stack* st;
+stack* st2;
 
 void mips_code_globl_decl(FILE* fp , tree* root){
     int sectionflag = 0;
@@ -233,8 +234,6 @@ void mips_code_assign_stmt(FILE* fp , tree* root){
     if (strcmp(var->type , "array") == 0){
         switch (var->vartype){
         case INTEGER:
-            fprintf(fp , "\tlw\t$t4,0($sp)\n");
-            fprintf(fp , "\taddiu\t$sp,$sp,4\n");
             fprintf(fp , "\tlui\t$t0,%%hi(%s)\n",var->name);
             fprintf(fp , "\taddiu\t$t0,$t0,%%lo(%s)\n",var->name);
             if (var->var_idx){
@@ -250,9 +249,13 @@ void mips_code_assign_stmt(FILE* fp , tree* root){
                 fprintf(fp , "\taddiu\t$sp, $sp, 4\n");
                 fprintf(fp , "\tsll\t$t1,$t1,2\n");              // t1 = i * 4 (for word offset)
                 fprintf(fp , "\tadd\t$t2,$t0,$t1\n");            // t2 = base + index * 4
+                fprintf(fp , "\tlw\t$t4,0($sp)\n");             // loading value from the stack to store in the given variable
+                fprintf(fp , "\taddiu\t$sp,$sp,4\n");
                 fprintf(fp , "\tsw\t$t4,0($t2)\n");              // store value at x[i]
             }
             else{
+                fprintf(fp , "\tlw\t$t4,0($sp)\n");
+                fprintf(fp , "\taddiu\t$sp,$sp,4\n");
                 fprintf(fp , "\tsw\t$t4,%d($t0)\n",4*var->idx);
             }
             break;
@@ -285,7 +288,9 @@ void mips_code_for_loop(FILE* fp , tree* root){
     int label_start = get_new_label_id();
     int label_body  = get_new_label_id();
     int label_end   = get_new_label_id();
+    int label_expr = get_new_label_id();
     pushOnStack(st , label_end); // will be useful in break statement
+    pushOnStack(st2 , label_expr); // will be useful in continue statement
     tree* for_init = root->child;
     tree* for_cond = for_init->sibling;
     tree* for_expr = for_cond->sibling;
@@ -304,6 +309,7 @@ void mips_code_for_loop(FILE* fp , tree* root){
     if (for_body->child){
         mips_code_stmt_list(fp , for_body);
     }
+    fprintf(fp , "L%d:\n", label_expr);
     if (for_expr->child){
         mips_code_assign_stmt(fp , for_expr->child);
     }
@@ -329,7 +335,25 @@ void mips_code_if_statement(FILE* fp , tree* root){
         mips_code_stmt_list(fp , else_body);
     }
     fprintf(fp , "L%d:\n",label_end);
+}
 
+void mips_code_while_loop(FILE* fp , tree* root){
+    int label_while = get_new_label_id();
+    int label_end = get_new_label_id();
+    int label_expr = get_new_label_id();
+    pushOnStack(st , label_end); // will be useful in break statement
+    pushOnStack(st2 , label_expr); // will be useful in continue statement
+    tree* while_cond = root->child;
+    tree* while_body = while_cond->sibling;
+    fprintf(fp , "L%d:\n" , label_while);
+    mips_code_stmt_list(fp , while_body);
+    fprintf(fp , "L%d:\n",label_expr);
+    mips_code_expression(fp , while_cond->child);
+    fprintf(fp , "\tlw\t$t2,0($sp)\n");
+    fprintf(fp , "\taddiu\t$sp,$sp,4\n");
+    fprintf(fp , "\tbne\t$t2,$0,L%d\n",label_while);
+    fprintf(fp , "\tnop\n");
+    fprintf(fp , "L%d:\n",label_end);
 }
 
 void mips_code_stmt_list(FILE* fp , tree* root){
@@ -346,7 +370,7 @@ void mips_code_stmt_list(FILE* fp , tree* root){
                 mips_code_for_loop(fp , child->child);
             }
             else if (strcmp(child->child->name , "WHILE_STMT") == 0){
-
+                mips_code_while_loop(fp , child->child);
             }
         }
         else if (strcmp(child->name , "CALL") == 0){
@@ -355,6 +379,12 @@ void mips_code_stmt_list(FILE* fp , tree* root){
         else if (strcmp(child->name , "break") == 0){
             fprintf(fp , "\tnop\n");
             stacknode* st_node = popFromStack(st);
+            fprintf(fp , "\tj\tL%d\n",st_node->number);
+            fprintf(fp , "\tnop\n");
+        }
+        else if (strcmp(child->name , "continue") == 0){
+            fprintf(fp , "\tnop\n");
+            stacknode* st_node = popFromStack(st2);
             fprintf(fp , "\tj\tL%d\n",st_node->number);
             fprintf(fp , "\tnop\n");
         }
@@ -393,27 +423,22 @@ void mips_code_call_func(FILE* fp , tree* func_name){
             if (strcmp(variable->type , "array") == 0){
                 switch (variable->vartype){
                 case INTEGER:
+                    fprintf(fp , "\tlui\t$t2,%%hi(%s)\n", read_vars->name);
+                    fprintf(fp , "\taddiu\t$t2,$t2,%%lo(%s)\n", read_vars->name);
                     if (read_vars->var_idx){
-                        fprintf(fp , "\tlui\t$2,%%hi(%s)\n", read_vars->name);
-                        fprintf(fp , "\taddiu\t$2,$2,%%lo(%s)\n", read_vars->name);
-                        fprintf(fp , "\tlui\t$4,%%hi(%s)\n", read_vars->var_idx);
-                        fprintf(fp , "\tlw\t$4,%%lo(%s)($4)\n", read_vars->var_idx);
-                        fprintf(fp , "\tsll\t$4,$4,2\n");   
-                        fprintf(fp , "\tadd\t$5,$2,$4\n");
+                        fprintf(fp , "\taddiu\t$sp, $sp, -4\n");
+                        fprintf(fp , "\tsw\t$t2, 0($sp)\n");
+                        mips_code_expression(fp, read_vars->child);
+                        fprintf(fp , "\tlw\t$t1, 0($sp)\n");
+                        fprintf(fp , "\taddiu\t$sp, $sp, 4\n");
+                        fprintf(fp , "\tlw\t$t0, 0($sp)\n");
+                        fprintf(fp , "\taddiu\t$sp, $sp, 4\n");
+                        fprintf(fp , "\tsll\t$t1,$t1,2\n");              // t1 = i * 4 (for word offset)
+                        fprintf(fp , "\tadd\t$5,$t0,$t1\n");
                     }
                     else{
-                        fprintf(fp , "\tlui\t$2,%%hi(%s+%d)\n",read_vars->name,4*read_vars->idx);
-                        fprintf(fp , "\taddiu\t$5,$2,%%lo(%s+%d)\n",read_vars->name,4*read_vars->idx);
+                        fprintf(fp , "\taddi\t$5,$t2,%d\n",4*read_vars->idx);
                     }
-                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
-                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
-                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
-                    fprintf(fp , "\tmove\t$25,$2\n");
-                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
-                    fprintf(fp , "1:\tjalr\t$25\n");
-                    fprintf(fp , "\tnop\n");
-                    fprintf(fp , "\n");
-                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
                     break;
                 default:
                     break;
@@ -424,21 +449,21 @@ void mips_code_call_func(FILE* fp , tree* func_name){
                 case INTEGER:
                     fprintf(fp , "\tlui\t$2,%%hi(%s)\n",read_vars->name);
                     fprintf(fp , "\taddiu\t$5,$2,%%lo(%s)\n",read_vars->name);
-                    fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
-                    fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
-                    fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
-                    fprintf(fp , "\tmove\t$25,$2\n");
-                    fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
-                    fprintf(fp , "1:\tjalr\t$25\n");
-                    fprintf(fp , "\tnop\n");
-                    fprintf(fp , "\n");
-                    fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
                     break;
                 
                 default:
                     break;
                 }
             }
+            fprintf(fp , "\tlui\t$2,%%hi($LC0)\n");
+            fprintf(fp , "\taddiu\t$4,$2,%%lo($LC0)\n");
+            fprintf(fp , "\tlw\t$2,%%call16(__isoc99_scanf)($28)\n");
+            fprintf(fp , "\tmove\t$25,$2\n");
+            fprintf(fp , "\t.reloc\t1f,R_MIPS_JALR,__isoc99_scanf\n");
+            fprintf(fp , "1:\tjalr\t$25\n");
+            fprintf(fp , "\tnop\n");
+            fprintf(fp , "\n");
+            fprintf(fp , "\tlw\t$28,16($fp)\t\t\t# $28 is global pointer\n");
             read_vars = read_vars->sibling;
         }
     }
@@ -446,6 +471,7 @@ void mips_code_call_func(FILE* fp , tree* func_name){
 
 void generate_mips_code(FILE* fp , tree* root){
     st = init_stack();
+    st2 = init_stack();
     fprintf(fp , "\t.file\t1\t\"code.c\"\n");
     fprintf(fp , "\t.section\t.mdebug.abi32\n");
     fprintf(fp , "\t.previous\n");

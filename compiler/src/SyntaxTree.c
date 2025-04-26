@@ -409,6 +409,9 @@ void evaluate_statements(tree* root){
             breakflag = 1;
             break;
         }
+        else if (strcmp(childs->name , "continue") == 0){
+            // need to implement logic
+        }
         childs = childs->sibling;
     }
 }

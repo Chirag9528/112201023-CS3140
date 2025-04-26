@@ -60,7 +60,7 @@ variable_type vartype;
 %token EQUALEQUAL LESSTHANOREQUAL GREATERTHANOREQUAL NOTEQUAL
 %token PLUSPLUS
 %token FOR 
-%token BREAK
+%token BREAK CONTINUE
 %token WHILE DO
 /* %token ENDWHILE */
 %token T F 
@@ -250,7 +250,7 @@ variable_type vartype;
 											$$ = $1; 
 										}
 		|	read_stmt ';'				{ 
-
+											$$ = $1;
 										}
 		|	write_stmt ';'				{
 											$$ = $1;
@@ -263,6 +263,9 @@ variable_type vartype;
 		 								}
 		|	BREAK ';'					{
 											$$ = createnode("break" , 0 , 0 , NULL , 0 , NULL , NULL , NULL);
+										}
+		| CONTINUE ';'					{
+											$$ = createnode("continue" , 0 , 0 , NULL , 0 , NULL , NULL , NULL);
 										}
 		;
 

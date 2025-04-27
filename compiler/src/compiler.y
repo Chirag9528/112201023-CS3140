@@ -92,9 +92,9 @@ variable_type vartype;
 													
 													evaluate_tree(prog);
 
-													// printf("Abstract Syntax Tree (AST):\n===========================\n\n");
-													// print(prog , 0);
-													// printf("\n");
+													printf("Abstract Syntax Tree (AST):\n===========================\n\n");
+													print(prog , 0);
+													printf("\n");
 
 													FILE* fp = fopen(output_file , "w");
 													if (fp == NULL){
@@ -563,6 +563,6 @@ int main(int argc , char* argv[]){
 
 	init();
 	yyparse();
-	// print_hash_table();
+	print_hash_table();
 	return 0;
 }

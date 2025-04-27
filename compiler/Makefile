@@ -1,5 +1,7 @@
 OBJS = src/Symboltable.o src/SyntaxTree.o src/CodeGeneration.o src/Queue.o src/Stack.o
 
+all : compiler
+
 compiler: lex yacc Symboltable SyntaxTree Queue Stack CodeGeneration
 	gcc -g src/lex.yy.c src/y.tab.c $(OBJS) -o bin/compiler
 
@@ -26,19 +28,6 @@ Stack: src/Stack.c include/Stack.h
 CodeGeneration: src/CodeGeneration.c include/CodeGeneration.h
 	gcc -Iinclude -c src/CodeGeneration.c -o src/CodeGeneration.o
 
-
-assembly:
-	mips-linux-gnu-gcc-10 file.c -S -o file.s
-	mips-linux-gnu-gcc-10  file.s -o file.out
-	qemu-mips -L /usr/mips-linux-gnu/ file.out
-
-clean_assembly:
-	rm -f file.out file.s code.out
-
 clean:
 	rm -f src/y.tab.h src/lex.yy.c src/y.tab.c src/*.o
 	rm -f bin/compiler
-
-test:
-	mips-linux-gnu-gcc-10	code.s -o code.out
-	qemu-mips -L /usr/mips-linux-gnu/ code.out

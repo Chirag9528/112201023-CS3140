@@ -211,15 +211,15 @@ Symbol Table:
 ## Sample Input
 
 ```
-$ 12 14 16
+$ 2 4 6 8 10
+$ 9
 ```
 
 
 ## Sample Output
 
 ```
-$ 12 14 16
-$ 42
+$ 0
 ```
 
 

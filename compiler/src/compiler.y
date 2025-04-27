@@ -20,6 +20,8 @@
 #include "../include/Symboltable.h"
 #include "../include/SyntaxTree.h"
 #include "../include/CodeGeneration.h"
+extern FILE* yyin;
+char* output_file;
 // #define YYSTYPE double
 int yylex();
 void yyerror( char* );
@@ -84,23 +86,23 @@ variable_type vartype;
 
 												}
 		| Gdecl_sec BEG stmt_list END			{
-												tree* stmt_list = createnode("STMT_LIST" , 0 , 0 , NULL , 0 , NULL , $3 , NULL);
-												$1->sibling = stmt_list;
-												tree* prog = createnode("PROG" , 0 , 0 , NULL , 0 , NULL , $1 , NULL);
-												
-												evaluate_tree(prog);
+													tree* stmt_list = createnode("STMT_LIST" , 0 , 0 , NULL , 0 , NULL , $3 , NULL);
+													$1->sibling = stmt_list;
+													tree* prog = createnode("PROG" , 0 , 0 , NULL , 0 , NULL , $1 , NULL);
+													
+													evaluate_tree(prog);
 
-												printf("Abstract Syntax Tree (AST):\n===========================\n\n");
-												print(prog , 0);
-												printf("\n");
+													// printf("Abstract Syntax Tree (AST):\n===========================\n\n");
+													// print(prog , 0);
+													// printf("\n");
 
-												FILE* fp = fopen("code.s" , "w");
-												if (fp == NULL){
-													printf("Failed to Open File\n");
-												}
-												else{
-													generate_mips_code(fp , prog);
-												}
+													FILE* fp = fopen(output_file , "w");
+													if (fp == NULL){
+														printf("Failed to Open File\n");
+													}
+													else{
+														generate_mips_code(fp , prog);
+													}
 
 											}
 		;
@@ -528,9 +530,39 @@ void yyerror ( char  *s) {
    fprintf (stderr, "%s\n", s);
 }
 
-int main(){
+int main(int argc , char* argv[]){
+	if (argc < 2){
+		fprintf(stderr , "filepath is missing!!!\n");
+	}
+	yyin = fopen(argv[1] , "r");
+
+	char* fullpath = argv[1];
+    char* filename = strrchr(fullpath, '/'); // searches last occurrence of '/'
+    if (filename) {
+        filename++; // move past the '/'
+    } else {
+        filename = fullpath; // no '/' found, filename itself
+    }
+
+    // Now filename points to the file part (like abc.sil)
+    char output_filename[256];
+    strcpy(output_filename, filename);
+
+    // Remove .sil extension
+    char *ext = strrchr(output_filename, '.');
+    if (ext && strcmp(ext, ".sil") == 0) {
+        *ext = '\0';  // remove ".sil"
+    } else {
+        printf("Error: Input file must have a .sil extension\n");
+        return 1;
+    }
+
+    // Add .s extension
+    strcat(output_filename, ".s");
+	output_file = strdup(output_filename);
+
 	init();
 	yyparse();
-	print_hash_table();
+	// print_hash_table();
 	return 0;
 }

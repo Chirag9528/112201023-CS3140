@@ -1,46 +1,30 @@
-cc = gcc
-SRC_DIR = src
-INC_DIR = include
-BIN_DIR = bin
-CFLAGS = -Iinclude
-
-#object files
-OBJS = $(SRC_DIR)/Symboltable.o ${SRC_DIR}/SyntaxTree.o ${SRC_DIR}/CodeGeneration.o ${SRC_DIR}/Queue.o ${SRC_DIR}/Stack.o
+OBJS = src/Symboltable.o src/SyntaxTree.o src/CodeGeneration.o src/Queue.o src/Stack.o
 
 compiler: lex yacc Symboltable SyntaxTree Queue Stack CodeGeneration
-	$(CC) -g $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(OBJS) -o $(BIN_DIR)/compiler
+	gcc -g src/lex.yy.c src/y.tab.c $(OBJS) -o bin/compiler
 
-#lex and yacc
-lex: $(SRC_DIR)/compiler.l yacc
-	lex $(SRC_DIR)/compiler.l
-	mv lex.yy.c $(SRC_DIR)/	
+lex: src/compiler.l yacc
+	lex src/compiler.l
+	mv lex.yy.c src/	
 
-yacc: $(SRC_DIR)/compiler.y
-	yacc -Wcounterexamples -d $(SRC_DIR)/compiler.y
-	mv y.tab.c y.tab.h $(SRC_DIR)/
+yacc: src/compiler.y
+	yacc -d src/compiler.y
+	mv y.tab.c y.tab.h src/
 
+Symboltable: src/Symboltable.c include/Symboltable.h
+	gcc -Iinclude -c src/Symboltable.c -o src/Symboltable.o
 
-# Object file compilation
-Symboltable: $(SRC_DIR)/Symboltable.c $(INC_DIR)/Symboltable.h
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/Symboltable.c -o $(SRC_DIR)/Symboltable.o
+SyntaxTree: src/SyntaxTree.c include/SyntaxTree.h
+	gcc -Iinclude -c src/SyntaxTree.c -o src/SyntaxTree.o
 
-SyntaxTree: $(SRC_DIR)/SyntaxTree.c $(INC_DIR)/SyntaxTree.h
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/SyntaxTree.c -o $(SRC_DIR)/SyntaxTree.o
+Queue: src/Queue.c include/Queue.h
+	gcc -Iinclude -c src/Queue.c -o src/Queue.o
 
-Queue: $(SRC_DIR)/Queue.c $(INC_DIR)/Queue.h
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/Queue.c -o $(SRC_DIR)/Queue.o
+Stack: src/Stack.c include/Stack.h
+	gcc -Iinclude -c src/Stack.c -o src/Stack.o
 
-Stack: $(SRC_DIR)/Stack.c $(INC_DIR)/Stack.h
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/Stack.c -o $(SRC_DIR)/Stack.o
-
-CodeGeneration: $(SRC_DIR)/CodeGeneration.c $(INC_DIR)/CodeGeneration.h
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/CodeGeneration.c -o $(SRC_DIR)/CodeGeneration.o
-
-
-# Clean target
-clean:
-	rm -f $(SRC_DIR)/y.tab.h $(SRC_DIR)/lex.yy.c $(SRC_DIR)/y.tab.c $(SRC_DIR)/*.o
-	rm -f $(BIN_DIR)/compiler
+CodeGeneration: src/CodeGeneration.c include/CodeGeneration.h
+	gcc -Iinclude -c src/CodeGeneration.c -o src/CodeGeneration.o
 
 
 assembly:
@@ -50,6 +34,10 @@ assembly:
 
 clean_assembly:
 	rm -f file.out file.s code.out
+
+clean:
+	rm -f src/y.tab.h src/lex.yy.c src/y.tab.c src/*.o
+	rm -f bin/compiler
 
 test:
 	mips-linux-gnu-gcc-10	code.s -o code.out
